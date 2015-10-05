@@ -27,3 +27,16 @@ func (g *Gouch) readChunkAt(pos int64, header bool) ([]byte, error) {
 	n, err = g.readAt(data, pos)
 	return chunkPrefix, nil
 }
+
+func (g *Gouch) readCompressedDataChunkAt(pos int64) ([]byte, error) {
+	chunk, err := g.readChunkAt(pos, false)
+	if err != nil {
+		return nil, err
+	}
+
+	decompressedChunk, err := SnappyDecode(nil, chunk)
+	if err != nil {
+		return nil, err
+	}
+	return decompressedChunk, nil
+}

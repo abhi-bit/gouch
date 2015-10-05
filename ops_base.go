@@ -1,6 +1,7 @@
 package gouch
 
 import (
+	"fmt"
 	"os"
 
 	"github.com/golang/snappy"
@@ -17,7 +18,9 @@ func (b *BaseOps) OpenFile(name string, flag int, perm os.FileMode) (file *os.Fi
 }
 
 func (b *BaseOps) ReadAt(f *os.File, bytes []byte, off int64) (n int, err error) {
-	return f.ReadAt(bytes, off)
+	n, err = f.ReadAt(bytes, off)
+	fmt.Printf("ReadAt n: %v, err: %v\n", n, err)
+	return n, err
 }
 
 func (b *BaseOps) WriteAt(f *os.File, bytes []byte, off int64) (n int, err error) {

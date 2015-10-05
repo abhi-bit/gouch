@@ -2,14 +2,31 @@ package main
 
 import (
 	"bytes"
-	"encoding/binary"
+	//"encoding/binary"
+	"encoding/json"
+	//	"flag"
 	"fmt"
 	"os"
 
 	"github.com/abhi-bit/gouch"
 )
 
+//var filename = flag.String("file", "", "view index file to read")
+
+func allDocumentsCallback(g *gouch.Gouch, docInfo *gouch.DocumentInfo, userContext interface{}) error {
+	bytes, err := json.MarshalIndent(docInfo, "", "  ")
+	if err != nil {
+		fmt.Println(err)
+	} else {
+		userContext.(map[string]int)["count"]++
+		fmt.Println(string(bytes))
+	}
+	return nil
+}
+
 func main() {
+	//	flag.Parse()
+
 	order := func(i1, i2 *gouch.Item) int {
 		var l int
 
@@ -26,7 +43,8 @@ func main() {
 	// godebug
 	_ = "breakpoint"
 
-	list := gouch.SortedListCreate(order)
+	_ = gouch.SortedListCreate(order)
+	/*list := gouch.SortedListCreate(order)
 	bs1 := make([]byte, 4)
 	binary.BigEndian.PutUint32(bs1, 1234567890)
 	list.SortedListAdd(&gouch.Item{Data: bs1})
@@ -57,12 +75,18 @@ func main() {
 	} else {
 		fmt.Println("Bitmap entry found!")
 	}
-	fmt.Printf("%+v\n", bitmap.Dump())
+	fmt.Printf("%+v\n", bitmap.Dump())*/
 
-	fmt.Println("\nFun starts here")
-	gouch, err := gouch.Open("0c60b3073925d69702ce52efc90a9c4e.view.1", os.O_RDONLY)
+	//gouch, err := gouch.Open(*filename, os.O_RDONLY)
+
+	context := map[string]int{"count": 0}
+
+	g, err := gouch.Open("vbucket", os.O_RDONLY)
 	if err != nil {
 		fmt.Errorf("Crashed while opening file\n")
 	}
-	fmt.Printf("Handler: %+v\n", gouch)
+	fmt.Printf("Handler: %+v\n", g)
+
+	err = g.AllDocuments("", "", allDocumentsCallback, context)
+
 }

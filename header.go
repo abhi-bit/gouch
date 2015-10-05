@@ -102,23 +102,32 @@ func DecodeIndexHeader(bytes []byte) *indexHeader {
 	return &h
 }
 
-/*func (g *Gouch) readHeaderAt(pos int64) (*header, error) {
+func (g *Gouch) readHeaderAt(pos int64) (*indexHeader, error) {
 	chunk, err := g.readChunkAt(pos, true)
 	if err != nil {
 		return nil, err
 	}
-}*/
+	header := DecodeIndexHeader(chunk)
+	return header, nil
+}
 
 func (g *Gouch) findLastHeader() error {
 	pos := g.pos
 	var h *indexHeader
 	var err error
+	var headerPos int64
 	for h == nil && err != nil {
-		_, err = g.seekLastHeaderBlockFrom(pos)
+		headerPos, err = g.seekLastHeaderBlockFrom(pos)
 		if err != nil {
 			return err
 		}
+		h, err = g.readHeaderAt(headerPos)
+		if err != nil {
+			pos = headerPos - 1
+		}
 	}
 	g.header = h
+	fmt.Printf("Abhi header: %+v\n", h)
+	fmt.Printf("Header dump: %+v\n", g)
 	return nil
 }
