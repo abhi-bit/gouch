@@ -1,9 +1,5 @@
 package gouch
 
-import (
-	"fmt"
-)
-
 const (
 	BLOCK_SIZE        int64 = 4096
 	BLOCK_MARKER_SIZE int64 = 1
@@ -13,10 +9,9 @@ const (
 )
 
 func (g *Gouch) seekPreviousBlockFrom(pos int64) (int64, byte, error) {
-	//pos -= 1
+	pos -= 1
 	pos -= pos % BLOCK_SIZE
 	for ; pos >= 0; pos -= BLOCK_SIZE {
-		fmt.Println("Seeking previous block!")
 		var err error
 		buf := make([]byte, 1)
 		n, err := g.ops.ReadAt(g.file, buf, pos)
@@ -38,7 +33,6 @@ func (g *Gouch) seekLastHeaderBlockFrom(pos int64) (int64, error) {
 	var blockType byte
 	var err error
 	for pos, blockType, err = g.seekPreviousBlockFrom(pos); blockType != BLOCK_HEADER; pos, blockType, err = g.seekPreviousBlockFrom(pos) {
-		fmt.Println("Inside seekLastHeaderBLockFrom function call")
 		if err != nil {
 			return -1, err
 		}
@@ -52,7 +46,7 @@ func (g *Gouch) readAt(buf []byte, pos int64) (int64, error) {
 	numBytesToRead := int64(len(buf))
 	readOffset := pos
 	for numBytesToRead > 0 {
-		//var err error
+		var err error
 		bytesTillNextBlock := BLOCK_SIZE - (readOffset % BLOCK_SIZE)
 		if bytesTillNextBlock == BLOCK_SIZE {
 			readOffset++
@@ -65,14 +59,12 @@ func (g *Gouch) readAt(buf []byte, pos int64) (int64, error) {
 		}
 		n, err := g.ops.ReadAt(g.file, buf[bytesReadSoFar:bytesReadSoFar+bytesToReadThisPass], readOffset)
 		if err != nil {
-			fmt.Errorf("Failed to read from offset: %d\n", readOffset)
 			return -1, err
 		}
 		readOffset += int64(n)
 		bytesReadSoFar += int64(n)
 		numBytesToRead -= int64(n)
 		if int64(n) < bytesToReadThisPass {
-			fmt.Printf("Bytes read: %d\n", bytesToReadThisPass)
 			return bytesReadSoFar, nil
 		}
 	}

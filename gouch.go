@@ -21,6 +21,7 @@ func OpenEx(filename string, options int, ops Ops) (*Gouch, error) {
 		ops: ops,
 	}
 
+	fmt.Printf("Trying to read file: %+v\n", filename)
 	file, err := gouch.ops.OpenFile(filename, os.O_RDONLY, 0666)
 	if err != nil {
 		fmt.Errorf("Failed to open file: %v\n", filename)

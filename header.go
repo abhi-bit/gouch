@@ -112,20 +112,12 @@ func DecodeIndexHeader(bytes []byte) *indexHeader {
 func (g *Gouch) findLastHeader() error {
 	pos := g.pos
 	var h *indexHeader
-	err := fmt.Errorf("start")
-	//var headerPos int64
+	var err error
 	for h == nil && err != nil {
-		//headerPos, err := g.seekLastHeaderBlockFrom(pos)
-		fmt.Println("Seeking last header block")
-		_, err := g.seekLastHeaderBlockFrom(pos)
+		_, err = g.seekLastHeaderBlockFrom(pos)
 		if err != nil {
-			fmt.Errorf("Failed to seek last header block\n")
 			return err
 		}
-		/*h, err := g.readHeaderAt(headerPos)
-		if err != nil {
-			pos = headerPos - 1
-		}*/
 	}
 	g.header = h
 	return nil
