@@ -46,7 +46,6 @@ func OpenEx(filename string, options int, ops Ops) (*Gouch, error) {
 			return nil, err
 		}
 	}
-	fmt.Printf("Gouch handler: %+v\n", gouch)
 	return &gouch, nil
 }
 
@@ -82,11 +81,14 @@ func lookupCallback(req *lookupRequest, key []byte, value []byte) error {
 
 func walkNodeCallback(req *lookupRequest, key []byte, value []byte) error {
 	context := req.callbackContext.(*lookupContext)
+	fmt.Printf("Key: %+v value: %+v req: %+v\n", string(key), string(value), req)
 	if value == nil {
+		fmt.Println("ABHI: value == nil")
 		context.depth--
 		return nil
 	} else {
 		valueNodePointer := decodeNodePointer(value)
+		fmt.Printf("decodeNodePointer valueNodePointer: %+v\n", valueNodePointer)
 		valueNodePointer.key = key
 		err := context.walkTreeCallback(context.gouch, context.depth, nil, key, valueNodePointer.subTreeSize, valueNodePointer.reducedValue, context.callbackContext)
 		context.depth++
@@ -106,12 +108,13 @@ func (g *Gouch) AllDocuments(startId, endId string, cb DocumentInfoCallback, use
 
 func (g *Gouch) WalkIdTree(startId, endId string, wtcb WalkTreeCallback, userContext interface{}) error {
 
-	fmt.Printf("Handler: %+v\n", g)
 	if g.header.idBTreeState == nil {
 		return nil
 	}
 
+	fmt.Printf("ABHI: idBtreeState: %+v\n", g.header.idBTreeState)
 	wtcb(g, 0, nil, nil, g.header.idBTreeState.subTreeSize, g.header.idBTreeState.reducedValue, userContext)
+	fmt.Printf("Gouch handle: %+v\n", g)
 
 	lc := lookupContext{
 		gouch:            g,
@@ -134,6 +137,7 @@ func (g *Gouch) WalkIdTree(startId, endId string, wtcb WalkTreeCallback, userCon
 		callbackContext: &lc,
 	}
 
+	fmt.Printf("idBTreeState: %+v\n", g.header.idBTreeState)
 	err := g.btreeLookup(&lr, g.header.idBTreeState.pointer)
 	if err != nil {
 		return err

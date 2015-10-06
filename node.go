@@ -2,6 +2,7 @@ package gouch
 
 import (
 	"bytes"
+	"fmt"
 )
 
 const COUCH_BLOCK_SIZE = 4096
@@ -25,10 +26,11 @@ type node struct {
 }
 
 type nodePointer struct {
-	key          []byte
-	pointer      uint64
-	reducedValue []byte
-	subTreeSize  uint64
+	key              []byte
+	pointer          uint64
+	subTreeSize      uint64
+	reducedValueSize uint16
+	reducedValue     []byte
 }
 
 func newInteriorNode() *node {
@@ -41,7 +43,7 @@ func (np *nodePointer) encodeRoot() []byte {
 	buf := new(bytes.Buffer)
 	buf.Write(encode_raw48(np.pointer))
 	buf.Write(encode_raw48(np.subTreeSize))
-	buf.Write(np.reducedValue)
+	buf.Write(encode_raw16(np.reducedValueSize))
 	return buf.Bytes()
 }
 
@@ -55,14 +57,20 @@ func (np *nodePointer) encode() []byte {
 }
 
 func decodeRootNodePointer(data []byte) *nodePointer {
+	if len(data) == 0 {
+		return nil
+	}
+
 	np := nodePointer{}
 	np.pointer = decode_raw48(data[0:6])
 	np.subTreeSize = decode_raw48(data[6:12])
-	np.reducedValue = data[ROOT_BASE_SIZE:]
+	np.reducedValueSize = decode_raw16(data[12:14])
+	np.reducedValue = data[14:]
 	return &np
 }
 
 func decodeByIdValue(docinfo *DocumentInfo, value []byte) {
+	fmt.Printf("value dump: %+v\n", value)
 	docinfo.Seq = decode_raw48(value[0:6])
 	docinfo.Size = uint64(decode_raw32(value[6:10]))
 	docinfo.Deleted, docinfo.bodyPosition = decode_raw_1_47_split(value[10:16])
@@ -73,10 +81,12 @@ func decodeByIdValue(docinfo *DocumentInfo, value []byte) {
 
 func decodeNodePointer(data []byte) *nodePointer {
 	np := nodePointer{}
+	fmt.Printf("data from decodeNodePointer: %+v\n", data)
 	np.pointer = decode_raw48(data[0:6])
 	np.subTreeSize = decode_raw48(data[6:12])
-	reduceValueSize := decode_raw16(data[12:14])
-	np.reducedValue = data[14 : 14+reduceValueSize]
+	np.reducedValueSize = decode_raw16(data[12:14])
+	np.reducedValue = data[14:]
+	fmt.Printf("nodepointer dump: %+v\n", np)
 	return &np
 }
 

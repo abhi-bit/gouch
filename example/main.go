@@ -81,7 +81,12 @@ func main() {
 
 	context := map[string]int{"count": 0}
 
-	g, err := gouch.Open("vbucket", os.O_RDONLY)
+	//g, err := gouch.Open("vbucket", os.O_RDONLY)
+	//g, err := gouch.Open("index", os.O_RDONLY)
+	//g, err := gouch.Open("index_with_1_entry", os.O_RDONLY)
+	//g, err := gouch.Open("index_25K_items_4_node", os.O_RDONLY)
+	g, err := gouch.Open("index_with_10K_entries", os.O_RDONLY)
+	//g, err := gouch.Open("beer_sample", os.O_RDONLY)
 	if err != nil {
 		fmt.Errorf("Crashed while opening file\n")
 	}

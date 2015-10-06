@@ -1,5 +1,9 @@
 package gouch
 
+import (
+	"fmt"
+)
+
 type DocumentInfoCallback func(gouch *Gouch, documentInfo *DocumentInfo, userContext interface{}) error
 
 type WalkTreeCallback func(gouch *Gouch, depth int, documentInfo *DocumentInfo, key []byte, subTreeSize uint64, reducedValue []byte, userContext interface{}) error
@@ -42,6 +46,8 @@ func (g *Gouch) btreeLookupInner(req *lookupRequest, diskPos uint64, current, en
 	if err != nil {
 		return err
 	}
+
+	fmt.Printf("BtreeLookupInterior nodeData: %+v\n", nodeData)
 
 	if nodeData[0] == BTREE_INTERIOR {
 		kvIterator := newKVIterator(nodeData[1:])
@@ -121,5 +127,6 @@ func (g *Gouch) btreeLookupInner(req *lookupRequest, diskPos uint64, current, en
 
 func (g *Gouch) btreeLookup(req *lookupRequest, rootPointer uint64) error {
 	req.inFold = false
+	fmt.Printf("Dumping inputs to btreeLookupInner: req: %+v rootPointer: %+v \n", req, rootPointer)
 	return g.btreeLookupInner(req, rootPointer, 0, len(req.keys))
 }
