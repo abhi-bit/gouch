@@ -135,10 +135,10 @@ func decodeLeafBtreeNode(nodeData []byte, indexType int) (*node, error) {
 func decodeByIdValue(docinfo *DocumentInfo, value []byte) {
 	docinfo.Seq = decode_raw48(value[0:6])
 	docinfo.Size = uint64(decode_raw32(value[6:10]))
-	docinfo.Deleted, docinfo.bodyPosition = decode_raw_1_47_split(value[10:16])
-	docinfo.Rev = decode_raw48(value[16:22])
-	docinfo.ContentMeta = decode_raw08(value[22:23])
-	docinfo.RevMeta = value[23:]
+	//docinfo.Deleted, docinfo.bodyPosition = decode_raw_1_47_split(value[10:16])
+	//docinfo.Rev = decode_raw48(value[16:22])
+	//docinfo.ContentMeta = decode_raw08(value[22:23])
+	//docinfo.RevMeta = value[23:]
 }
 
 func (d DocumentInfo) encodeById() []byte {
