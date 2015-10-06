@@ -2,7 +2,6 @@ package gouch
 
 import (
 	"fmt"
-	"reflect"
 	"sort"
 )
 
@@ -34,17 +33,43 @@ type indexHeader struct {
 	partVersions       partVersionList
 }
 
+func (g *Gouch) findLastHeader() error {
+	pos := g.pos
+	var h *indexHeader
+	var err error = fmt.Errorf("start")
+	var headerPos int64
+	for h == nil && err != nil {
+		headerPos, err = g.seekLastHeaderBlockFrom(pos)
+		if err != nil {
+			return err
+		}
+		h, err = g.readHeaderAt(headerPos)
+		if err != nil {
+			pos = headerPos - 1
+		}
+	}
+	g.header = h
+	return nil
+}
+
+func (g *Gouch) readHeaderAt(pos int64) (*indexHeader, error) {
+	chunk, err := g.readChunkAt(pos, true)
+	if err != nil {
+		return nil, err
+	}
+	header := DecodeIndexHeader(chunk)
+	return header, nil
+}
+
 func DecodeIndexHeader(bytes []byte) *indexHeader {
 	if len(bytes) <= 16 {
 		fmt.Printf("Corrupt header len: %+v\n", len(bytes))
 		return nil
 	}
-	fmt.Printf("Sane header len: %+v\n", len(bytes))
 	var data []byte
 	arrayIndex := 0
 
 	data, err := SnappyDecode(nil, bytes[16:])
-	fmt.Printf("Input array size: %+v\n", reflect.TypeOf(bytes).Size())
 	if err != nil {
 		fmt.Printf("error in snappy decode: %+v\n", err)
 		return nil
@@ -53,7 +78,6 @@ func DecodeIndexHeader(bytes []byte) *indexHeader {
 	h := indexHeader{}
 
 	h.signature = bytes[0:15]
-	fmt.Printf("Data array: %+v\n", data[0:10])
 	h.version = decode_raw08(data[arrayIndex : arrayIndex+1])
 	arrayIndex += 1
 	h.numPartitions = decode_raw16(data[arrayIndex : arrayIndex+2])
@@ -188,34 +212,6 @@ func DecodeIndexHeader(bytes []byte) *indexHeader {
 		}
 		sort.Sort(h.partVersions)
 	}
-	//fmt.Printf("Header dump: %+v\n", h)
+	fmt.Printf("Header dump: %+v\n", h)
 	return &h
-}
-
-func (g *Gouch) readHeaderAt(pos int64) (*indexHeader, error) {
-	chunk, err := g.readChunkAt(pos, true)
-	if err != nil {
-		return nil, err
-	}
-	header := DecodeIndexHeader(chunk)
-	return header, nil
-}
-
-func (g *Gouch) findLastHeader() error {
-	pos := g.pos
-	var h *indexHeader
-	var err error = fmt.Errorf("start")
-	var headerPos int64
-	for h == nil && err != nil {
-		headerPos, err = g.seekLastHeaderBlockFrom(pos)
-		if err != nil {
-			return err
-		}
-		h, err = g.readHeaderAt(headerPos)
-		if err != nil {
-			pos = headerPos - 1
-		}
-	}
-	g.header = h
-	return nil
 }

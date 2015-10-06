@@ -5,32 +5,45 @@ import (
 	"fmt"
 )
 
-const COUCH_BLOCK_SIZE = 4096
-const COUCH_DISK_VERSION = 11
-const COUCH_SNAPPY_THRESHOLD = 64
-const MAX_DB_HEADER_SIZE = 1024
-
 const (
 	BTREE_INTERIOR        byte = 0
 	BTREE_LEAF            byte = 1
 	INDEX_TYPE_BY_ID      int  = 0
 	INDEX_TYPE_BY_SEQ     int  = 1
 	INDEX_TYPE_LOCAL_DOCS int  = 2
+	ROOT_BASE_SIZE        int  = 12
 	KEY_VALUE_LEN         int  = 5
 )
 
-const ROOT_BASE_SIZE = 12
-
 type node struct {
+	// interior nodes will have this
 	pointers []*nodePointer
+	// leaf nodes will have this
+	documents []*DocumentInfo
 }
 
-type nodePointer struct {
-	key              []byte
-	pointer          uint64
-	subTreeSize      uint64
-	reducedValueSize uint16
-	reducedValue     []byte
+func (n *node) String() string {
+	var rv string
+	if n.pointers != nil {
+		rv = "Interior Node: [\n"
+		for i, p := range n.pointers {
+			if i != 0 {
+				rv += ",\n"
+			}
+			rv += fmt.Sprintf("%v", p)
+		}
+		rv += "\n]\n"
+	} else {
+		rv = "Leaf Node: [\n"
+		for i, d := range n.documents {
+			if i != 0 {
+				rv += ",\n"
+			}
+			rv += fmt.Sprintf("%v", d)
+		}
+		rv += "\n]\n"
+	}
+	return rv
 }
 
 func newInteriorNode() *node {
@@ -39,38 +52,87 @@ func newInteriorNode() *node {
 	}
 }
 
+func newLeafNode() *node {
+	return &node{
+		documents: make([]*DocumentInfo, 0),
+	}
+}
+
+type nodePointer struct {
+	key          []byte
+	pointer      uint64
+	reducedValue []byte
+	subtreeSize  uint64
+}
+
 func (np *nodePointer) encodeRoot() []byte {
 	buf := new(bytes.Buffer)
 	buf.Write(encode_raw48(np.pointer))
-	buf.Write(encode_raw48(np.subTreeSize))
-	buf.Write(encode_raw16(np.reducedValueSize))
+	buf.Write(encode_raw48(np.subtreeSize))
+	buf.Write(np.reducedValue)
 	return buf.Bytes()
 }
 
 func (np *nodePointer) encode() []byte {
 	buf := new(bytes.Buffer)
 	buf.Write(encode_raw48(np.pointer))
-	buf.Write(encode_raw48(np.subTreeSize))
+	buf.Write(encode_raw48(np.subtreeSize))
 	buf.Write(encode_raw16(uint16(len(np.reducedValue))))
 	buf.Write(np.reducedValue)
 	return buf.Bytes()
 }
 
 func decodeRootNodePointer(data []byte) *nodePointer {
-	if len(data) == 0 {
-		return nil
-	}
+	n := nodePointer{}
+	n.pointer = decode_raw48(data[0:6])
+	n.subtreeSize = decode_raw48(data[6:12])
+	n.reducedValue = data[ROOT_BASE_SIZE:]
+	return &n
+}
 
-	np := nodePointer{}
-	np.pointer = decode_raw48(data[0:6])
-	np.subTreeSize = decode_raw48(data[6:12])
-	np.reducedValueSize = decode_raw16(data[12:14])
-	np.reducedValue = data[14:]
-	return &np
+func decodeNodePointer(data []byte) *nodePointer {
+	n := nodePointer{}
+	n.pointer = decode_raw48(data[0:6])
+	n.subtreeSize = decode_raw48(data[6:12])
+	reduceValueSize := decode_raw16(data[12:14])
+	n.reducedValue = data[14 : 14+reduceValueSize]
+	return &n
+}
+
+func decodeInteriorBtreeNode(nodeData []byte, indexType int) (*node, error) {
+	bufPos := 1
+	resultNode := newInteriorNode()
+	for bufPos < len(nodeData) {
+		key, value, end := decodeKeyValue(nodeData, bufPos)
+		valueNodePointer := decodeNodePointer(value)
+		valueNodePointer.key = key
+		resultNode.pointers = append(resultNode.pointers, valueNodePointer)
+		bufPos = end
+	}
+	return resultNode, nil
+}
+
+func decodeLeafBtreeNode(nodeData []byte, indexType int) (*node, error) {
+	bufPos := 1
+	resultNode := newLeafNode()
+	for bufPos < len(nodeData) {
+		key, value, end := decodeKeyValue(nodeData, bufPos)
+		docinfo := DocumentInfo{}
+		if indexType == INDEX_TYPE_BY_ID {
+			docinfo.ID = string(key)
+			decodeByIdValue(&docinfo, value)
+		} else if indexType == INDEX_TYPE_BY_SEQ {
+			docinfo.Seq = decode_raw48(key)
+			decodeBySeqValue(&docinfo, value)
+		}
+
+		resultNode.documents = append(resultNode.documents, &docinfo)
+		bufPos = end
+	}
+	return resultNode, nil
 }
 
 func decodeByIdValue(docinfo *DocumentInfo, value []byte) {
-	fmt.Printf("value dump: %+v\n", value)
 	docinfo.Seq = decode_raw48(value[0:6])
 	docinfo.Size = uint64(decode_raw32(value[6:10]))
 	docinfo.Deleted, docinfo.bodyPosition = decode_raw_1_47_split(value[10:16])
@@ -79,15 +141,15 @@ func decodeByIdValue(docinfo *DocumentInfo, value []byte) {
 	docinfo.RevMeta = value[23:]
 }
 
-func decodeNodePointer(data []byte) *nodePointer {
-	np := nodePointer{}
-	fmt.Printf("data from decodeNodePointer: %+v\n", data)
-	np.pointer = decode_raw48(data[0:6])
-	np.subTreeSize = decode_raw48(data[6:12])
-	np.reducedValueSize = decode_raw16(data[12:14])
-	np.reducedValue = data[14:]
-	fmt.Printf("nodepointer dump: %+v\n", np)
-	return &np
+func (d DocumentInfo) encodeById() []byte {
+	buf := new(bytes.Buffer)
+	buf.Write(encode_raw48(d.Seq))
+	buf.Write(encode_raw32(d.Size))
+	buf.Write(encode_raw_1_47_split(d.Deleted, d.bodyPosition))
+	buf.Write(encode_raw48(d.Rev))
+	buf.Write(encode_raw08(d.ContentMeta))
+	buf.Write(d.RevMeta)
+	return buf.Bytes()
 }
 
 func decodeBySeqValue(docinfo *DocumentInfo, value []byte) {
@@ -98,6 +160,17 @@ func decodeBySeqValue(docinfo *DocumentInfo, value []byte) {
 	docinfo.ContentMeta = decode_raw08(value[17:18])
 	docinfo.ID = string(value[18 : 18+idSize])
 	docinfo.RevMeta = value[18+idSize:]
+}
+
+func (d DocumentInfo) encodeBySeq() []byte {
+	buf := new(bytes.Buffer)
+	buf.Write(encode_raw_12_28_split(uint32(len(d.ID)), uint32(d.Size)))
+	buf.Write(encode_raw_1_47_split(d.Deleted, d.bodyPosition))
+	buf.Write(encode_raw48(d.Rev))
+	buf.Write(encode_raw08(d.ContentMeta))
+	buf.Write([]byte(d.ID))
+	buf.Write(d.RevMeta)
+	return buf.Bytes()
 }
 
 func decodeKeyValue(nodeData []byte, bufPos int) ([]byte, []byte, int) {
@@ -111,18 +184,28 @@ func decodeKeyValue(nodeData []byte, bufPos int) ([]byte, []byte, int) {
 	return key, value, valueEnd
 }
 
-type KVIterator struct {
+func encodeKeyValue(key, value []byte) []byte {
+	buf := new(bytes.Buffer)
+	keyLength := len(key)
+	valueLength := len(value)
+	buf.Write(encode_raw_12_28_split(uint32(keyLength), uint32(valueLength)))
+	buf.Write(key)
+	buf.Write(value)
+	return buf.Bytes()
+}
+
+type keyValueIterator struct {
 	data []byte
 	pos  int
 }
 
-func newKVIterator(data []byte) *KVIterator {
-	return &KVIterator{
+func newKeyValueIterator(data []byte) *keyValueIterator {
+	return &keyValueIterator{
 		data: data,
 	}
 }
 
-func (kvi *KVIterator) Next() ([]byte, []byte) {
+func (kvi *keyValueIterator) Next() ([]byte, []byte) {
 	if kvi.pos < len(kvi.data) {
 		key, value, end := decodeKeyValue(kvi.data, kvi.pos)
 		kvi.pos = end

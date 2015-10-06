@@ -1,26 +1,5 @@
 package gouch
 
-import (
-	"fmt"
-)
-
-type DocumentInfoCallback func(gouch *Gouch, documentInfo *DocumentInfo, userContext interface{}) error
-
-type WalkTreeCallback func(gouch *Gouch, depth int, documentInfo *DocumentInfo, key []byte, subTreeSize uint64, reducedValue []byte, userContext interface{}) error
-
-type callback func(req *lookupRequest, key []byte, value []byte) error
-
-type DocumentInfo struct {
-	ID           string `json:"id"`
-	Seq          uint64 `json:"seq"`
-	Rev          uint64 `json:"rev"`
-	RevMeta      []byte `json:"revMeta"`
-	ContentMeta  uint8  `json:"contentMeta"`
-	Deleted      bool   `json:"deleted"`
-	Size         uint64 `json:"size"`
-	bodyPosition uint64
-}
-
 type lookupContext struct {
 	gouch                *Gouch
 	documentInfoCallback DocumentInfoCallback
@@ -41,16 +20,16 @@ type lookupRequest struct {
 	callbackContext interface{}
 }
 
+type callback func(req *lookupRequest, key []byte, value []byte) error
+
 func (g *Gouch) btreeLookupInner(req *lookupRequest, diskPos uint64, current, end int) error {
 	nodeData, err := g.readCompressedDataChunkAt(int64(diskPos))
 	if err != nil {
 		return err
 	}
 
-	fmt.Printf("BtreeLookupInterior nodeData: %+v\n", nodeData)
-
 	if nodeData[0] == BTREE_INTERIOR {
-		kvIterator := newKVIterator(nodeData[1:])
+		kvIterator := newKeyValueIterator(nodeData[1:])
 		for k, v := kvIterator.Next(); k != nil && current < end; k, v = kvIterator.Next() {
 			cmp := req.compare(k, req.keys[current])
 			if cmp >= 0 {
@@ -90,7 +69,7 @@ func (g *Gouch) btreeLookupInner(req *lookupRequest, diskPos uint64, current, en
 			}
 		}
 	} else if nodeData[0] == BTREE_LEAF {
-		kvIterator := newKVIterator(nodeData[1:])
+		kvIterator := newKeyValueIterator(nodeData[1:])
 		for k, v := kvIterator.Next(); k != nil && current < end; k, v = kvIterator.Next() {
 			cmp := req.compare(k, req.keys[current])
 			if cmp >= 0 && req.fold && !req.inFold {
@@ -127,6 +106,5 @@ func (g *Gouch) btreeLookupInner(req *lookupRequest, diskPos uint64, current, en
 
 func (g *Gouch) btreeLookup(req *lookupRequest, rootPointer uint64) error {
 	req.inFold = false
-	fmt.Printf("Dumping inputs to btreeLookupInner: req: %+v rootPointer: %+v \n", req, rootPointer)
 	return g.btreeLookupInner(req, rootPointer, 0, len(req.keys))
 }

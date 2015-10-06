@@ -2,6 +2,7 @@ package gouch
 
 import (
 	"fmt"
+	"log"
 	"os"
 )
 
@@ -10,6 +11,17 @@ type Gouch struct {
 	pos    int64
 	header *indexHeader
 	ops    Ops
+}
+
+type DocumentInfo struct {
+	ID           string `json:"id"`          // document identifier
+	Seq          uint64 `json:"seq"`         // sequence number in database
+	Rev          uint64 `json:"rev"`         // revision number of document
+	RevMeta      []byte `json:"revMeta"`     // additional revision meta-data (uninterpreted by Gouchstore)
+	ContentMeta  uint8  `json:"contentMeta"` // content meta-data flags
+	Deleted      bool   `json:"deleted"`     // is the revision deleted?
+	Size         uint64 `json:"size"`        // size of document data in bytes
+	bodyPosition uint64 // byte offset of document body in file
 }
 
 func Open(filename string, options int) (*Gouch, error) {
@@ -21,15 +33,13 @@ func OpenEx(filename string, options int, ops Ops) (*Gouch, error) {
 		ops: ops,
 	}
 
-	fmt.Printf("Trying to read file: %+v\n", filename)
+	log.Printf("Trying to read file: %+v\n", filename)
 	file, err := gouch.ops.OpenFile(filename, os.O_RDONLY, 0666)
 	if err != nil {
-		fmt.Errorf("Failed to open file: %v\n", filename)
 		return nil, err
 	}
 	gouch.file = file
 
-	fmt.Println("Trying to read from EOF")
 	gouch.pos, err = gouch.ops.GotoEOF(gouch.file)
 	if err != nil {
 		fmt.Errorf("Failed while reading file from the end. file: %v\n", filename)
@@ -40,7 +50,6 @@ func OpenEx(filename string, options int, ops Ops) (*Gouch, error) {
 		fmt.Errorf("Empty file: %v\n", filename)
 		return nil, err
 	} else {
-		fmt.Println("Trying to read last header")
 		err = gouch.findLastHeader()
 		if err != nil {
 			return nil, err
@@ -81,20 +90,19 @@ func lookupCallback(req *lookupRequest, key []byte, value []byte) error {
 
 func walkNodeCallback(req *lookupRequest, key []byte, value []byte) error {
 	context := req.callbackContext.(*lookupContext)
-	fmt.Printf("Key: %+v value: %+v req: %+v\n", string(key), string(value), req)
 	if value == nil {
-		fmt.Println("ABHI: value == nil")
 		context.depth--
 		return nil
 	} else {
 		valueNodePointer := decodeNodePointer(value)
-		fmt.Printf("decodeNodePointer valueNodePointer: %+v\n", valueNodePointer)
 		valueNodePointer.key = key
-		err := context.walkTreeCallback(context.gouch, context.depth, nil, key, valueNodePointer.subTreeSize, valueNodePointer.reducedValue, context.callbackContext)
+		err := context.walkTreeCallback(context.gouch, context.depth, nil, key, valueNodePointer.subtreeSize, valueNodePointer.reducedValue, context.callbackContext)
 		context.depth++
 		return err
 	}
 }
+
+type DocumentInfoCallback func(gouch *Gouch, documentInfo *DocumentInfo, userContext interface{}) error
 
 func (g *Gouch) AllDocuments(startId, endId string, cb DocumentInfoCallback, userContext interface{}) error {
 	wtCallback := func(gouch *Gouch, depth int, documentInfo *DocumentInfo, key []byte, subTreeSize uint64, reducedValue []byte, userContext interface{}) error {
@@ -106,15 +114,15 @@ func (g *Gouch) AllDocuments(startId, endId string, cb DocumentInfoCallback, use
 	return g.WalkIdTree(startId, endId, wtCallback, userContext)
 }
 
+type WalkTreeCallback func(gouch *Gouch, depth int, documentInfo *DocumentInfo, key []byte, subTreeSize uint64, reducedValue []byte, userContext interface{}) error
+
 func (g *Gouch) WalkIdTree(startId, endId string, wtcb WalkTreeCallback, userContext interface{}) error {
 
 	if g.header.idBTreeState == nil {
 		return nil
 	}
 
-	fmt.Printf("ABHI: idBtreeState: %+v\n", g.header.idBTreeState)
-	wtcb(g, 0, nil, nil, g.header.idBTreeState.subTreeSize, g.header.idBTreeState.reducedValue, userContext)
-	fmt.Printf("Gouch handle: %+v\n", g)
+	wtcb(g, 0, nil, nil, g.header.idBTreeState.subtreeSize, g.header.idBTreeState.reducedValue, userContext)
 
 	lc := lookupContext{
 		gouch:            g,
@@ -137,7 +145,6 @@ func (g *Gouch) WalkIdTree(startId, endId string, wtcb WalkTreeCallback, userCon
 		callbackContext: &lc,
 	}
 
-	fmt.Printf("idBTreeState: %+v\n", g.header.idBTreeState)
 	err := g.btreeLookup(&lr, g.header.idBTreeState.pointer)
 	if err != nil {
 		return err
