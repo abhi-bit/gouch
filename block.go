@@ -1,38 +1,42 @@
 package gouch
 
-const (
-	BLOCK_SIZE        int64 = 4096
-	BLOCK_MARKER_SIZE int64 = 1
-	BLOCK_DATA        byte  = 0
-	BLOCK_HEADER      byte  = 1
-	BLOCK_INVALID     byte  = 0xff
-)
+//BlockSize BTree block size
+const BlockSize int64 = 4096
+
+//BlockData Data block
+const BlockData byte = 0
+
+//BlockHeader Header block
+const BlockHeader byte = 1
+
+//BlockInvalid marker for invalid btree block
+const BlockInvalid byte = 0xff
 
 func (g *Gouch) seekPreviousBlockFrom(pos int64) (int64, byte, error) {
-	pos -= 1
-	pos -= pos % BLOCK_SIZE
-	for ; pos >= 0; pos -= BLOCK_SIZE {
+	pos--
+	pos -= pos % BlockSize
+	for ; pos >= 0; pos -= BlockSize {
 		var err error
 		buf := make([]byte, 1)
 		n, err := g.ops.ReadAt(g.file, buf, pos)
 		if n != 1 || err != nil {
-			return -1, BLOCK_INVALID, err
+			return -1, BlockInvalid, err
 		}
-		if buf[0] == BLOCK_HEADER {
-			return pos, BLOCK_HEADER, nil
-		} else if buf[0] == BLOCK_DATA {
-			return pos, BLOCK_DATA, nil
+		if buf[0] == BlockHeader {
+			return pos, BlockHeader, nil
+		} else if buf[0] == BlockData {
+			return pos, BlockData, nil
 		} else {
-			return -1, BLOCK_INVALID, nil
+			return -1, BlockInvalid, nil
 		}
 	}
-	return -1, BLOCK_INVALID, nil
+	return -1, BlockInvalid, nil
 }
 
 func (g *Gouch) seekLastHeaderBlockFrom(pos int64) (int64, error) {
 	var blockType byte
 	var err error
-	for pos, blockType, err = g.seekPreviousBlockFrom(pos); blockType != BLOCK_HEADER; pos, blockType, err = g.seekPreviousBlockFrom(pos) {
+	for pos, blockType, err = g.seekPreviousBlockFrom(pos); blockType != BlockHeader; pos, blockType, err = g.seekPreviousBlockFrom(pos) {
 		if err != nil {
 			return -1, err
 		}
@@ -47,8 +51,8 @@ func (g *Gouch) readAt(buf []byte, pos int64) (int64, error) {
 	readOffset := pos
 	for numBytesToRead > 0 {
 		var err error
-		bytesTillNextBlock := BLOCK_SIZE - (readOffset % BLOCK_SIZE)
-		if bytesTillNextBlock == BLOCK_SIZE {
+		bytesTillNextBlock := BlockSize - (readOffset % BlockSize)
+		if bytesTillNextBlock == BlockSize {
 			readOffset++
 			bytesTillNextBlock--
 			bytesSkipped++

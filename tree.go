@@ -28,7 +28,7 @@ func (g *Gouch) btreeLookupInner(req *lookupRequest, diskPos uint64, current, en
 		return err
 	}
 
-	if nodeData[0] == BTREE_INTERIOR {
+	if nodeData[0] == BtreeInterior {
 		kvIterator := newKeyValueIterator(nodeData[1:])
 		for k, v := kvIterator.Next(); k != nil && current < end; k, v = kvIterator.Next() {
 			cmp := req.compare(k, req.keys[current])
@@ -68,7 +68,7 @@ func (g *Gouch) btreeLookupInner(req *lookupRequest, diskPos uint64, current, en
 				}
 			}
 		}
-	} else if nodeData[0] == BTREE_LEAF {
+	} else if nodeData[0] == BtreeLeaf {
 		kvIterator := newKeyValueIterator(nodeData[1:])
 		for k, v := kvIterator.Next(); k != nil && current < end; k, v = kvIterator.Next() {
 			cmp := req.compare(k, req.keys[current])

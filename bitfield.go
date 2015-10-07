@@ -5,59 +5,60 @@ import (
 	"encoding/binary"
 )
 
-const TOP_BIT_MASK byte = 0x80
+// TopBitMask used for masking the first bit
+const TopBitMask byte = 0x80
 
-func encode_raw08(val interface{}) []byte {
+func encodeRaw08(val interface{}) []byte {
 	buf := new(bytes.Buffer)
 	binary.Write(buf, binary.BigEndian, val)
 	bufbytes := buf.Bytes()
 	return bufbytes[len(bufbytes)-1:]
 }
 
-func encode_raw16(val interface{}) []byte {
+func encodeRaw16(val interface{}) []byte {
 	buf := new(bytes.Buffer)
 	binary.Write(buf, binary.BigEndian, val)
 	bufbytes := buf.Bytes()
 	return bufbytes[len(bufbytes)-2:]
 }
 
-func encode_raw31_highestbiton(val interface{}) []byte {
+func encodeRaw31Highestbiton(val interface{}) []byte {
 	buf := new(bytes.Buffer)
 	binary.Write(buf, binary.BigEndian, val)
 	bufbytes := buf.Bytes()
-	bufbytes[len(bufbytes)-4] = bufbytes[len(bufbytes)-4] | TOP_BIT_MASK
+	bufbytes[len(bufbytes)-4] = bufbytes[len(bufbytes)-4] | TopBitMask
 	return bufbytes[len(bufbytes)-4:]
 }
 
-func encode_raw32(val interface{}) []byte {
+func encodeRaw32(val interface{}) []byte {
 	buf := new(bytes.Buffer)
 	binary.Write(buf, binary.BigEndian, val)
 	bufbytes := buf.Bytes()
 	return bufbytes[len(bufbytes)-4:]
 }
 
-func encode_raw40(val interface{}) []byte {
+func encodeRaw40(val interface{}) []byte {
 	buf := new(bytes.Buffer)
 	binary.Write(buf, binary.BigEndian, val)
 	bufbytes := buf.Bytes()
 	return bufbytes[len(bufbytes)-5:]
 }
 
-func encode_raw48(val interface{}) []byte {
+func encodeRaw48(val interface{}) []byte {
 	buf := new(bytes.Buffer)
 	binary.Write(buf, binary.BigEndian, val)
 	bufbytes := buf.Bytes()
 	return bufbytes[len(bufbytes)-6:]
 }
 
-func decode_raw08(raw []byte) uint8 {
+func decodeRaw08(raw []byte) uint8 {
 	var rv uint8
 	buf := bytes.NewBuffer(raw)
 	binary.Read(buf, binary.BigEndian, &rv)
 	return rv
 }
 
-func decode_raw16(raw []byte) uint16 {
+func decodeRaw16(raw []byte) uint16 {
 	var rv uint16
 	buf := bytes.NewBuffer(raw)
 	binary.Read(buf, binary.BigEndian, &rv)
@@ -65,7 +66,7 @@ func decode_raw16(raw []byte) uint16 {
 }
 
 // just like raw32 but mask out the top bit
-func decode_raw31(raw []byte) uint32 {
+func decodeRaw31(raw []byte) uint32 {
 	var rv uint32
 	topByte := maskOutTopBit(raw[0])
 	buf := bytes.NewBuffer([]byte{topByte})
@@ -74,29 +75,14 @@ func decode_raw31(raw []byte) uint32 {
 	return rv
 }
 
-func decode_raw32(raw []byte) uint32 {
+func decodeRaw32(raw []byte) uint32 {
 	var rv uint32
 	buf := bytes.NewBuffer(raw)
 	binary.Read(buf, binary.BigEndian, &rv)
 	return rv
 }
 
-func decode_raw48(raw []byte) uint64 {
-	var rv uint64
-	buf := bytes.NewBuffer([]byte{0, 0})
-	buf.Write(raw)
-	binary.Read(buf, binary.BigEndian, &rv)
-	return rv
-}
-
-func decode_raw64(raw []byte) uint64 {
-	var rv uint64
-	buf := bytes.NewBuffer(raw)
-	binary.Read(buf, binary.BigEndian, &rv)
-	return rv
-}
-
-func decode_raw40(raw []byte) uint64 {
+func decodeRaw40(raw []byte) uint64 {
 	var rv uint64
 	buf := bytes.NewBuffer([]byte{0, 0, 0})
 	buf.Write(raw)
@@ -104,19 +90,34 @@ func decode_raw40(raw []byte) uint64 {
 	return rv
 }
 
+func decodeRaw48(raw []byte) uint64 {
+	var rv uint64
+	buf := bytes.NewBuffer([]byte{0, 0})
+	buf.Write(raw)
+	binary.Read(buf, binary.BigEndian, &rv)
+	return rv
+}
+
+func decodeRaw64(raw []byte) uint64 {
+	var rv uint64
+	buf := bytes.NewBuffer(raw)
+	binary.Read(buf, binary.BigEndian, &rv)
+	return rv
+}
+
 func valueTopBit(in byte) bool {
-	if in&TOP_BIT_MASK != 0 {
+	if in&TopBitMask != 0 {
 		return true
 	}
 	return false
 }
 
 func maskOutTopBit(in byte) byte {
-	return in &^ TOP_BIT_MASK
+	return in &^ TopBitMask
 }
 
 // this decodes a common structure with 1 bit, followed by 47 bits
-func decode_raw_1_47_split(raw []byte) (bool, uint64) {
+func decodeRaw1_47Split(raw []byte) (bool, uint64) {
 	var rint uint64
 	rbool := valueTopBit(raw[0])
 	topByte := maskOutTopBit(raw[0])
@@ -126,27 +127,27 @@ func decode_raw_1_47_split(raw []byte) (bool, uint64) {
 	return rbool, rint
 }
 
-func encode_raw_1_47_split(topBit bool, rest uint64) []byte {
+func encodeRaw1_47Split(topBit bool, rest uint64) []byte {
 	// encode the rest portion first
 	buf := new(bytes.Buffer)
 	binary.Write(buf, binary.BigEndian, rest)
 	bufbytes := buf.Bytes()
 	// then overwrite the top bit
 	if topBit {
-		bufbytes[len(bufbytes)-6] = bufbytes[len(bufbytes)-6] | TOP_BIT_MASK
+		bufbytes[len(bufbytes)-6] = bufbytes[len(bufbytes)-6] | TopBitMask
 	} else {
-		bufbytes[len(bufbytes)-6] = bufbytes[len(bufbytes)-6] &^ TOP_BIT_MASK
+		bufbytes[len(bufbytes)-6] = bufbytes[len(bufbytes)-6] &^ TopBitMask
 	}
 	return bufbytes[len(bufbytes)-6:]
 }
 
-func decode_raw_12_28_split(data []byte) (top uint32, bottom uint32) {
-	kFirstByte := (data[0] & 0xf0) >> 4
-	kSecondByteTop := (data[0] & 0x0f) << 4
-	kSecondByteBottom := (data[1] & 0xf0) >> 4
-	kSecondByte := kSecondByteTop | kSecondByteBottom
+func decodeRaw12_28Split(data []byte) (top uint32, bottom uint32) {
+	FirstByte := (data[0] & 0xf0) >> 4
+	SecondByteTop := (data[0] & 0x0f) << 4
+	SecondByteBottom := (data[1] & 0xf0) >> 4
+	SecondByte := SecondByteTop | SecondByteBottom
 
-	buf := bytes.NewBuffer([]byte{0x00, 0x00, kFirstByte, kSecondByte})
+	buf := bytes.NewBuffer([]byte{0x00, 0x00, FirstByte, SecondByte})
 	binary.Read(buf, binary.BigEndian, &top)
 
 	buf = bytes.NewBuffer([]byte{data[1] & 0x0f})
@@ -155,7 +156,7 @@ func decode_raw_12_28_split(data []byte) (top uint32, bottom uint32) {
 	return
 }
 
-func encode_raw_12_28_split(top uint32, bottom uint32) []byte {
+func encodeRaw12_28Split(top uint32, bottom uint32) []byte {
 	topbuf := new(bytes.Buffer)
 	binary.Write(topbuf, binary.BigEndian, top)
 	topbytes := topbuf.Bytes()

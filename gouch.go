@@ -6,13 +6,15 @@ import (
 	"os"
 )
 
+//Gouch handler for reading a index file
 type Gouch struct {
 	file   *os.File
 	pos    int64
-	header *indexHeader
+	header *IndexHeader
 	ops    Ops
 }
 
+//DocumentInfo Handler for capturing metadata
 type DocumentInfo struct {
 	ID           string `json:"id"`          // document identifier
 	Seq          uint64 `json:"seq"`         // sequence number in database
@@ -24,10 +26,12 @@ type DocumentInfo struct {
 	bodyPosition uint64 // byte offset of document body in file
 }
 
+//Open up index file with defined perms
 func Open(filename string, options int) (*Gouch, error) {
 	return OpenEx(filename, options, NewBaseOps())
 }
 
+//OpenEx opens index file and looks for valid header
 func OpenEx(filename string, options int, ops Ops) (*Gouch, error) {
 	gouch := Gouch{
 		ops: ops,
@@ -49,11 +53,10 @@ func OpenEx(filename string, options int, ops Ops) (*Gouch, error) {
 	if gouch.pos == 0 {
 		fmt.Errorf("Empty file: %v\n", filename)
 		return nil, err
-	} else {
-		err = gouch.findLastHeader()
-		if err != nil {
-			return nil, err
-		}
+	}
+	err = gouch.findLastHeader()
+	if err != nil {
+		return nil, err
 	}
 	return &gouch, nil
 }
@@ -66,21 +69,20 @@ func lookupCallback(req *lookupRequest, key []byte, value []byte) error {
 	context := req.callbackContext.(*lookupContext)
 
 	docinfo := DocumentInfo{}
-	if context.indexType == INDEX_TYPE_BY_ID {
+	if context.indexType == IndexTypeByID {
 		docinfo.ID = string(key)
-		decodeByIdValue(&docinfo, value)
-	} else if context.indexType == INDEX_TYPE_BY_SEQ {
-		docinfo.Seq = decode_raw48(key)
+		decodeByIDValue(&docinfo, value)
+	} else if context.indexType == IndexTypeBySeq {
+		docinfo.Seq = decodeRaw48(key)
 		decodeBySeqValue(&docinfo, value)
 	}
 
 	if context.walkTreeCallback != nil {
-		if context.indexType == INDEX_TYPE_LOCAL_DOCS {
+		if context.indexType == IndexTypeLocalDocs {
 			// note we pass the non-initialized docinfo so we can at least detect that its a leaf
 			return context.walkTreeCallback(context.gouch, context.depth, &docinfo, key, 0, value, context.callbackContext)
-		} else {
-			return context.walkTreeCallback(context.gouch, context.depth, &docinfo, nil, 0, nil, context.callbackContext)
 		}
+		return context.walkTreeCallback(context.gouch, context.depth, &docinfo, nil, 0, nil, context.callbackContext)
 	} else if context.documentInfoCallback != nil {
 		return context.documentInfoCallback(context.gouch, &docinfo, context.callbackContext)
 	}
@@ -93,30 +95,33 @@ func walkNodeCallback(req *lookupRequest, key []byte, value []byte) error {
 	if value == nil {
 		context.depth--
 		return nil
-	} else {
-		valueNodePointer := decodeNodePointer(value)
-		valueNodePointer.key = key
-		err := context.walkTreeCallback(context.gouch, context.depth, nil, key, valueNodePointer.subtreeSize, valueNodePointer.reducedValue, context.callbackContext)
-		context.depth++
-		return err
 	}
+	valueNodePointer := decodeNodePointer(value)
+	valueNodePointer.key = key
+	err := context.walkTreeCallback(context.gouch, context.depth, nil, key, valueNodePointer.subtreeSize, valueNodePointer.reducedValue, context.callbackContext)
+	context.depth++
+	return err
 }
 
+//DocumentInfoCallback callback for capturing metadata
 type DocumentInfoCallback func(gouch *Gouch, documentInfo *DocumentInfo, userContext interface{}) error
 
-func (g *Gouch) AllDocuments(startId, endId string, cb DocumentInfoCallback, userContext interface{}) error {
+//AllDocuments dumps all documents based on startID and endID
+func (g *Gouch) AllDocuments(startID, endID string, cb DocumentInfoCallback, userContext interface{}) error {
 	wtCallback := func(gouch *Gouch, depth int, documentInfo *DocumentInfo, key []byte, subTreeSize uint64, reducedValue []byte, userContext interface{}) error {
 		if documentInfo != nil {
 			return cb(gouch, documentInfo, userContext)
 		}
 		return nil
 	}
-	return g.WalkIdTree(startId, endId, wtCallback, userContext)
+	return g.WalkIDTree(startID, endID, wtCallback, userContext)
 }
 
+//WalkTreeCallback callback for traversing btree
 type WalkTreeCallback func(gouch *Gouch, depth int, documentInfo *DocumentInfo, key []byte, subTreeSize uint64, reducedValue []byte, userContext interface{}) error
 
-func (g *Gouch) WalkIdTree(startId, endId string, wtcb WalkTreeCallback, userContext interface{}) error {
+//WalkIDTree traverses a btree based on startID and endID
+func (g *Gouch) WalkIDTree(startID, endID string, wtcb WalkTreeCallback, userContext interface{}) error {
 
 	if g.header.idBTreeState == nil {
 		return nil
@@ -128,16 +133,16 @@ func (g *Gouch) WalkIdTree(startId, endId string, wtcb WalkTreeCallback, userCon
 		gouch:            g,
 		walkTreeCallback: wtcb,
 		callbackContext:  userContext,
-		indexType:        INDEX_TYPE_BY_ID,
+		indexType:        IndexTypeByID,
 	}
 
-	keys := [][]byte{[]byte(startId)}
-	if endId != "" {
-		keys = append(keys, []byte(endId))
+	keys := [][]byte{[]byte(startID)}
+	if endID != "" {
+		keys = append(keys, []byte(endID))
 	}
 
 	lr := lookupRequest{
-		compare:         IdComparator,
+		compare:         IDComparator,
 		keys:            keys,
 		fetchCallback:   lookupCallback,
 		nodeCallback:    walkNodeCallback,

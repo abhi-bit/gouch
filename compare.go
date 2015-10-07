@@ -6,13 +6,15 @@ import (
 
 type btreeKeyComparator func(a, b []byte) int
 
-func IdComparator(a, b []byte) int {
+//IDComparator Comparing IDs
+func IDComparator(a, b []byte) int {
 	return bytes.Compare(a, b)
 }
 
+//SeqComparator by comparing Sequence numbers
 func SeqComparator(a, b []byte) int {
-	aseq := decode_raw48(a)
-	bseq := decode_raw48(b)
+	aseq := decodeRaw48(a)
+	bseq := decodeRaw48(b)
 
 	if aseq < bseq {
 		return -1
@@ -32,14 +34,14 @@ type idList [][]byte
 
 func (idl idList) Len() int           { return len(idl) }
 func (idl idList) Swap(i, j int)      { idl[i], idl[j] = idl[j], idl[i] }
-func (idl idList) Less(i, j int) bool { return IdComparator(idl[i], idl[j]) < 0 }
+func (idl idList) Less(i, j int) bool { return IDComparator(idl[i], idl[j]) < 0 }
 
 type idAndValueList struct {
 	ids  idList
 	vals idList
 }
 
-func (idavl idAndValueList) Len() int { return idavl.ids.Len() }
+func (idval idAndValueList) Len() int { return idval.ids.Len() }
 func (idval idAndValueList) Swap(i, j int) {
 	idval.ids.Swap(i, j)
 	idval.vals[i], idval.vals[j] = idval.vals[j], idval.vals[i]
@@ -67,6 +69,7 @@ func (pvl partVersionList) Len() int           { return len(pvl) }
 func (pvl partVersionList) Swap(i, j int)      { pvl[i], pvl[j] = pvl[j], pvl[i] }
 func (pvl partVersionList) Less(i, j int) bool { return (pvl[i].partID - pvl[i].partID) < 0 }
 
+//FailoverLog from DCP
 type FailoverLog struct {
 	uuid []byte
 	seq  uint64

@@ -5,8 +5,7 @@ import (
 	"sort"
 )
 
-const LATEST_INDEX_HEADER_VERSION = 2
-
+//IndexStateTransition capture the state of different partitions
 type IndexStateTransition struct {
 	active      seqList
 	passive     seqList
@@ -15,7 +14,8 @@ type IndexStateTransition struct {
 
 type nodePointerList []*nodePointer
 
-type indexHeader struct {
+//IndexHeader main header of index file
+type IndexHeader struct {
 	version            uint8
 	signature          []byte
 	numViews           uint8
@@ -35,8 +35,8 @@ type indexHeader struct {
 
 func (g *Gouch) findLastHeader() error {
 	pos := g.pos
-	var h *indexHeader
-	var err error = fmt.Errorf("start")
+	var h *IndexHeader
+	err := fmt.Errorf("start")
 	var headerPos int64
 	for h == nil && err != nil {
 		headerPos, err = g.seekLastHeaderBlockFrom(pos)
@@ -52,7 +52,7 @@ func (g *Gouch) findLastHeader() error {
 	return nil
 }
 
-func (g *Gouch) readHeaderAt(pos int64) (*indexHeader, error) {
+func (g *Gouch) readHeaderAt(pos int64) (*IndexHeader, error) {
 	chunk, err := g.readChunkAt(pos, true)
 	if err != nil {
 		return nil, err
@@ -61,7 +61,8 @@ func (g *Gouch) readHeaderAt(pos int64) (*indexHeader, error) {
 	return header, nil
 }
 
-func DecodeIndexHeader(bytes []byte) *indexHeader {
+//DecodeIndexHeader decodes the main index header
+func DecodeIndexHeader(bytes []byte) *IndexHeader {
 	if len(bytes) <= 16 {
 		fmt.Printf("Corrupt header len: %+v\n", len(bytes))
 		return nil
@@ -75,113 +76,113 @@ func DecodeIndexHeader(bytes []byte) *indexHeader {
 		return nil
 	}
 
-	h := indexHeader{}
+	h := IndexHeader{}
 
 	h.signature = bytes[0:15]
-	h.version = decode_raw08(data[arrayIndex : arrayIndex+1])
-	arrayIndex += 1
-	h.numPartitions = decode_raw16(data[arrayIndex : arrayIndex+2])
+	h.version = decodeRaw08(data[arrayIndex : arrayIndex+1])
+	arrayIndex++
+	h.numPartitions = decodeRaw16(data[arrayIndex : arrayIndex+2])
 	arrayIndex += 2
 	fmt.Printf("Version: %+v Numpartitions: %+v\n", h.version, h.numPartitions)
 
-	// BITMAP_SIZE == 128
-	h.activeBitmask = &Bitmap{data: data[arrayIndex : arrayIndex+BITMAP_SIZE]}
-	arrayIndex += BITMAP_SIZE
+	// BitmapSize == 128
+	h.activeBitmask = &Bitmap{data: data[arrayIndex : arrayIndex+BitmapSize]}
+	arrayIndex += BitmapSize
 	//fmt.Printf("active bitmask dump: %+v\n", h.activeBitmask.Dump())
-	h.passiveBitmask = &Bitmap{data: data[arrayIndex : arrayIndex+BITMAP_SIZE]}
-	arrayIndex += BITMAP_SIZE
+	h.passiveBitmask = &Bitmap{data: data[arrayIndex : arrayIndex+BitmapSize]}
+	arrayIndex += BitmapSize
 	//fmt.Printf("passive bitmask dump: %+v\n", h.passiveBitmask.Dump())
-	h.cleanupBitmask = &Bitmap{data: data[arrayIndex : arrayIndex+BITMAP_SIZE]}
-	arrayIndex += BITMAP_SIZE
+	h.cleanupBitmask = &Bitmap{data: data[arrayIndex : arrayIndex+BitmapSize]}
+	arrayIndex += BitmapSize
 	//fmt.Printf("cleanup bitmask dump: %+v\n", h.cleanupBitmask.Dump())
 
-	numSeqs := decode_raw16(data[arrayIndex : arrayIndex+2])
+	numSeqs := decodeRaw16(data[arrayIndex : arrayIndex+2])
 	arrayIndex += 2
 	fmt.Printf("numSeqs: %+v\n", numSeqs)
 
 	for i := 0; i < int(numSeqs); i++ {
-		ps := partSeq{
-			partID: decode_raw16(data[arrayIndex : arrayIndex+2]),
-			seq:    decode_raw48(data[arrayIndex+2 : arrayIndex+8]),
-		}
+		ps := partSeq{}
+		ps.partID = decodeRaw16(data[arrayIndex : arrayIndex+2])
+		arrayIndex += 2
+		ps.seq = decodeRaw48(data[arrayIndex : arrayIndex+6])
 		//fmt.Printf("partID: %+v seq: %+v\n", ps.partID, ps.seq)
-		arrayIndex += 8
+		arrayIndex += 6
 		h.seqs = append(h.seqs, ps)
 	}
 	sort.Sort(h.seqs)
 	//fmt.Printf("h.seqs: %+v\n", h.seqs)
 
-	sz := decode_raw16(data[arrayIndex : arrayIndex+2])
+	sz := decodeRaw16(data[arrayIndex : arrayIndex+2])
 	arrayIndex += 2
 	//fmt.Printf("Size: %d\n", sz)
 
 	h.idBTreeState = decodeRootNodePointer(data[arrayIndex : arrayIndex+int(sz)])
 	arrayIndex += int(sz)
 
-	h.numViews = decode_raw08(data[arrayIndex : arrayIndex+1])
-	arrayIndex += 1
+	h.numViews = decodeRaw08(data[arrayIndex : arrayIndex+1])
+	arrayIndex++
 	fmt.Printf("numViews: %+v\n", h.numViews)
 
 	h.viewStates = make([]*nodePointer, int(h.numViews))
 
 	for i := 0; i < int(h.numViews); i++ {
-		sz = decode_raw16(data[arrayIndex : arrayIndex+2])
+		sz = decodeRaw16(data[arrayIndex : arrayIndex+2])
 		arrayIndex += 2
 		h.viewStates[i] = decodeRootNodePointer(data[arrayIndex : arrayIndex+int(sz)])
 		arrayIndex += int(sz)
 	}
 
-	h.hasReplica = int(decode_raw08(data[arrayIndex : arrayIndex+1]))
-	arrayIndex += 1
+	h.hasReplica = int(decodeRaw08(data[arrayIndex : arrayIndex+1]))
+	arrayIndex++
 
-	sz = decode_raw16(data[arrayIndex : arrayIndex+2])
+	sz = decodeRaw16(data[arrayIndex : arrayIndex+2])
 	arrayIndex += 2
 
 	for i := 0; i < int(sz); i++ {
-		partID := decode_raw16(data[arrayIndex : arrayIndex+2])
+		partID := decodeRaw16(data[arrayIndex : arrayIndex+2])
 		arrayIndex += 2
 		h.replicasOnTransfer = append(h.replicasOnTransfer, uint64(partID))
 	}
 	sort.Sort(h.replicasOnTransfer)
 
-	sz = decode_raw16(data[arrayIndex : arrayIndex+2])
+	sz = decodeRaw16(data[arrayIndex : arrayIndex+2])
 	arrayIndex += 2
 
 	for i := 0; i < int(sz); i++ {
-		partID := decode_raw16(data[arrayIndex : arrayIndex+2])
+		partID := decodeRaw16(data[arrayIndex : arrayIndex+2])
 		arrayIndex += 2
 		h.pendingTransaction.active = append(h.pendingTransaction.active, uint64(partID))
 	}
 	sort.Sort(h.pendingTransaction.active)
 
-	sz = decode_raw16(data[arrayIndex : arrayIndex+2])
+	sz = decodeRaw16(data[arrayIndex : arrayIndex+2])
 	arrayIndex += 2
 
 	for i := 0; i < int(sz); i++ {
-		partID := decode_raw16(data[arrayIndex : arrayIndex+2])
+		partID := decodeRaw16(data[arrayIndex : arrayIndex+2])
 		arrayIndex += 2
 		h.pendingTransaction.passive = append(h.pendingTransaction.passive, uint64(partID))
 	}
 	sort.Sort(h.pendingTransaction.passive)
 
-	sz = decode_raw16(data[arrayIndex : arrayIndex+2])
+	sz = decodeRaw16(data[arrayIndex : arrayIndex+2])
 	arrayIndex += 2
 
 	for i := 0; i < int(sz); i++ {
-		partID := decode_raw16(data[arrayIndex : arrayIndex+2])
+		partID := decodeRaw16(data[arrayIndex : arrayIndex+2])
 		arrayIndex += 2
 		h.pendingTransaction.unindexable = append(h.pendingTransaction.unindexable, uint64(partID))
 	}
 	sort.Sort(h.pendingTransaction.unindexable)
 
-	numSeqs = decode_raw16(data[arrayIndex : arrayIndex+2])
+	numSeqs = decodeRaw16(data[arrayIndex : arrayIndex+2])
 	arrayIndex += 2
 
 	for i := 0; i < int(numSeqs); i++ {
 		pSeq := partSeq{}
-		pSeq.partID = decode_raw16(data[arrayIndex : arrayIndex+2])
+		pSeq.partID = decodeRaw16(data[arrayIndex : arrayIndex+2])
 		arrayIndex += 2
-		pSeq.seq = decode_raw64(data[arrayIndex : arrayIndex+6])
+		pSeq.seq = decodeRaw64(data[arrayIndex : arrayIndex+6])
 		arrayIndex += 6
 
 		h.unindexableSeqs = append(h.unindexableSeqs, pSeq)
@@ -189,21 +190,21 @@ func DecodeIndexHeader(bytes []byte) *indexHeader {
 	sort.Sort(h.unindexableSeqs)
 
 	if h.version >= 2 {
-		numPartVersions := decode_raw16(data[arrayIndex : arrayIndex+2])
+		numPartVersions := decodeRaw16(data[arrayIndex : arrayIndex+2])
 		arrayIndex += 2
 
 		for i := 0; i < int(numPartVersions); i++ {
 			pver := partVersion{}
-			pver.partID = decode_raw16(data[arrayIndex : arrayIndex+2])
+			pver.partID = decodeRaw16(data[arrayIndex : arrayIndex+2])
 			arrayIndex += 2
-			pver.numFailoverLog = decode_raw16(data[arrayIndex : arrayIndex+2])
+			pver.numFailoverLog = decodeRaw16(data[arrayIndex : arrayIndex+2])
 			arrayIndex += 2
 
 			for j := 0; j < int(pver.numFailoverLog); j++ {
 				fl := FailoverLog{}
 				fl.uuid = data[arrayIndex : arrayIndex+8]
 				arrayIndex += 8
-				fl.seq = decode_raw64(data[arrayIndex : arrayIndex+8])
+				fl.seq = decodeRaw64(data[arrayIndex : arrayIndex+8])
 				arrayIndex += 8
 
 				pver.failoverLog = append(pver.failoverLog, fl)
@@ -212,6 +213,6 @@ func DecodeIndexHeader(bytes []byte) *indexHeader {
 		}
 		sort.Sort(h.partVersions)
 	}
-	fmt.Printf("Header dump: %+v\n", h)
+	//fmt.Printf("Header dump: %+v\n", h)
 	return &h
 }

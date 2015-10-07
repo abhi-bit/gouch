@@ -1,7 +1,7 @@
 package main
 
 import (
-	"bytes"
+	//	"bytes"
 	//"encoding/binary"
 	"encoding/json"
 	//	"flag"
@@ -27,7 +27,7 @@ func allDocumentsCallback(g *gouch.Gouch, docInfo *gouch.DocumentInfo, userConte
 func main() {
 	//	flag.Parse()
 
-	order := func(i1, i2 *gouch.Item) int {
+	/*order := func(i1, i2 *gouch.Item) int {
 		var l int
 
 		l1 := len(i1.Data)
@@ -38,12 +38,12 @@ func main() {
 			l = l2
 		}
 		return bytes.Compare(i1.Data[:l], i2.Data[:l])
-	}
+	}*/
 
 	// godebug
 	_ = "breakpoint"
 
-	_ = gouch.SortedListCreate(order)
+	//_ = gouch.SortedListCreate(order)
 	/*list := gouch.SortedListCreate(order)
 	bs1 := make([]byte, 4)
 	binary.BigEndian.PutUint32(bs1, 1234567890)

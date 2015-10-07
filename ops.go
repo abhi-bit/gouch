@@ -4,6 +4,7 @@ import (
 	"os"
 )
 
+//Ops interface for doing file operations
 type Ops interface {
 	OpenFile(name string, flag int, perm os.FileMode) (file *os.File, err error)
 	ReadAt(f *os.File, b []byte, off int64) (n int, err error)

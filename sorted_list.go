@@ -6,17 +6,21 @@ import (
 	"fmt"
 )
 
+//Item within SortedList
 type Item struct {
 	Data []byte
 }
 
+//CompareFunc comparator for given sorted list
 type CompareFunc func(i1, i2 *Item) int
 
+//SortedList data struct
 type SortedList struct {
 	List    *list.List
 	Compare CompareFunc
 }
 
+//SortedListCreate creates a sortedList
 func SortedListCreate(Compare CompareFunc) *SortedList {
 	return &SortedList{
 		List:    list.New(),
@@ -24,6 +28,7 @@ func SortedListCreate(Compare CompareFunc) *SortedList {
 	}
 }
 
+//SortedListAdd adds an item to existing sorted list
 func (s *SortedList) SortedListAdd(item *Item) {
 	node := s.List.Front()
 	var prev *list.Element
@@ -52,6 +57,7 @@ func (s *SortedList) SortedListAdd(item *Item) {
 	}
 }
 
+//SortedListGet grabs an item from SortedList
 func (s *SortedList) SortedListGet(item *Item) *Item {
 	node := s.List.Front()
 
@@ -71,6 +77,7 @@ func (s *SortedList) SortedListGet(item *Item) *Item {
 	return nil
 }
 
+//SortedListRemove removes an item from SortedList
 func (s *SortedList) SortedListRemove(item *Item) {
 	node := s.List.Front()
 
@@ -91,12 +98,14 @@ func (s *SortedList) SortedListRemove(item *Item) {
 	return
 }
 
+//SortedListDump dumps the SortedList data struct
 func (s *SortedList) SortedListDump() {
 	for e := s.List.Front(); e != nil; e = e.Next() {
 		fmt.Println(binary.BigEndian.Uint32(e.Value.(*Item).Data))
 	}
 }
 
+//SortedListSize dumps the len of SortedList data struct
 func (s *SortedList) SortedListSize() int {
 	return s.List.Len()
 }

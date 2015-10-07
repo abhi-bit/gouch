@@ -4,32 +4,33 @@ import (
 	"hash/crc32"
 )
 
-const (
-	CHUNK_LENGTH_SIZE int64 = 4
-	CHUNK_CRC_SIZE    int64 = 4
-)
+// ChunkLengthSize 32 bits long
+const ChunkLengthSize int64 = 4
+
+//ChunkCRCSize 32 bits long
+const ChunkCRCSize int64 = 4
 
 // attempt to read a chunk at the specified location
 func (g *Gouch) readChunkAt(pos int64, header bool) ([]byte, error) {
 	// chunk starts with 8 bytes (32bit length, 32bit crc)
-	chunkPrefix := make([]byte, CHUNK_LENGTH_SIZE+CHUNK_CRC_SIZE)
+	chunkPrefix := make([]byte, ChunkLengthSize+ChunkCRCSize)
 	n, err := g.readAt(chunkPrefix, pos)
 	if err != nil {
 		return nil, err
 	}
-	if n < CHUNK_LENGTH_SIZE+CHUNK_CRC_SIZE {
+	if n < ChunkLengthSize+ChunkCRCSize {
 		return nil, nil
 	}
 
-	size := decode_raw31(chunkPrefix[0:CHUNK_LENGTH_SIZE])
-	crc := decode_raw32(chunkPrefix[CHUNK_LENGTH_SIZE : CHUNK_LENGTH_SIZE+CHUNK_CRC_SIZE])
+	size := decodeRaw31(chunkPrefix[0:ChunkLengthSize])
+	crc := decodeRaw32(chunkPrefix[ChunkLengthSize : ChunkLengthSize+ChunkCRCSize])
 
 	// size should at least be the size of the length field + 1 (for headers)
-	if header && size < uint32(CHUNK_LENGTH_SIZE+1) {
+	if header && size < uint32(ChunkLengthSize+1) {
 		return nil, nil
 	}
 	if header {
-		size -= uint32(CHUNK_LENGTH_SIZE) // headers include the length of the hash, data does not
+		size -= uint32(ChunkLengthSize) // headers include the length of the hash, data does not
 	}
 
 	data := make([]byte, size)
