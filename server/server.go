@@ -16,17 +16,17 @@ import (
 var limit int
 
 func allDocumentsCallback(g *gouch.Gouch, docInfo *gouch.DocumentInfo, userContext interface{}, w io.Writer) error {
-	bytes, err := json.MarshalIndent(docInfo, "", "  ")
-	//bytes, err := json.MarshalIndent(docInfo.ID, "", "  ")
+	//bytes, err := json.MarshalIndent(docInfo, "", "  ")
+	bytes, err := json.MarshalIndent(docInfo.ID, "", "  ")
 	if err != nil {
 		fmt.Println(err)
 	} else {
-		if userContext.(map[string]int)["count"] < limit {
-			userContext.(map[string]int)["count"]++
-			fmt.Fprintf(w, string(bytes))
-		} else {
+		userContext.(map[string]int)["count"]++
+		fmt.Fprintf(w, string(bytes))
+		/*if userContext.(map[string]int)["count"] > limit {
+			fmt.Printf("counter: %+v\n", userContext.(map[string]int)["count"])
 			return nil
-		}
+		}*/
 	}
 	return nil
 }
