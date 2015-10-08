@@ -2,7 +2,7 @@ package gouch
 
 import (
 	"fmt"
-	"log"
+	"io"
 	"os"
 )
 
@@ -37,7 +37,6 @@ func OpenEx(filename string, options int, ops Ops) (*Gouch, error) {
 		ops: ops,
 	}
 
-	log.Printf("Trying to read file: %+v\n", filename)
 	file, err := gouch.ops.OpenFile(filename, os.O_RDONLY, 0666)
 	if err != nil {
 		return nil, err
@@ -61,6 +60,10 @@ func OpenEx(filename string, options int, ops Ops) (*Gouch, error) {
 	return &gouch, nil
 }
 
+func (di *DocumentInfo) String() string {
+	return fmt.Sprintf("ID: '%s' Seq: %d Rev: %d Deleted: %t Size: %d BodyPosition: %d (0x%x)", di.ID, di.Seq, di.Rev, di.Deleted, di.Size, di.bodyPosition, di.bodyPosition)
+}
+
 func lookupCallback(req *lookupRequest, key []byte, value []byte) error {
 	if value == nil {
 		return nil
@@ -69,7 +72,7 @@ func lookupCallback(req *lookupRequest, key []byte, value []byte) error {
 	context := req.callbackContext.(*lookupContext)
 
 	docinfo := DocumentInfo{}
-	if context.indexType == IndexTypeByID {
+	if context.indexType == IndexTypeByID || context.indexType == IndexTypeMapR {
 		docinfo.ID = string(key)
 		decodeByIDValue(&docinfo, value)
 	} else if context.indexType == IndexTypeBySeq {
@@ -83,9 +86,9 @@ func lookupCallback(req *lookupRequest, key []byte, value []byte) error {
 			return context.walkTreeCallback(context.gouch, context.depth, &docinfo, key, 0, value, context.callbackContext)
 		}
 		return context.walkTreeCallback(context.gouch, context.depth, &docinfo, nil, 0, nil, context.callbackContext)
-	} else if context.documentInfoCallback != nil {
+	} /*else if context.documentInfoCallback != nil {
 		return context.documentInfoCallback(context.gouch, &docinfo, context.callbackContext)
-	}
+	}*/
 
 	return nil
 }
@@ -104,13 +107,13 @@ func walkNodeCallback(req *lookupRequest, key []byte, value []byte) error {
 }
 
 //DocumentInfoCallback callback for capturing metadata
-type DocumentInfoCallback func(gouch *Gouch, documentInfo *DocumentInfo, userContext interface{}) error
+type DocumentInfoCallback func(gouch *Gouch, documentInfo *DocumentInfo, userContext interface{}, w io.Writer) error
 
 //AllDocuments dumps all documents based on startID and endID
-func (g *Gouch) AllDocuments(startID, endID string, cb DocumentInfoCallback, userContext interface{}) error {
+func (g *Gouch) AllDocuments(startID, endID string, cb DocumentInfoCallback, userContext interface{}, w io.Writer) error {
 	wtCallback := func(gouch *Gouch, depth int, documentInfo *DocumentInfo, key []byte, subTreeSize uint64, reducedValue []byte, userContext interface{}) error {
 		if documentInfo != nil {
-			return cb(gouch, documentInfo, userContext)
+			return cb(gouch, documentInfo, userContext, w)
 		}
 		return nil
 	}
@@ -155,5 +158,55 @@ func (g *Gouch) WalkIDTree(startID, endID string, wtcb WalkTreeCallback, userCon
 		return err
 	}
 
+	return nil
+}
+
+//AllDocsMapReduce MapReduce tree dump
+func (g *Gouch) AllDocsMapReduce(startID, endID string, mapR DocumentInfoCallback, userContext interface{}, w io.Writer) error {
+	mapRCallback := func(gouch *Gouch, depth int, documentInfo *DocumentInfo, key []byte, subTreeSize uint64, reducedValue []byte, userContext interface{}) error {
+		if documentInfo != nil {
+			return mapR(gouch, documentInfo, userContext, w)
+		}
+		return nil
+	}
+	return g.WalkMapReduceTree(startID, endID, mapRCallback, userContext)
+}
+
+//WalkMapReduceTree MapReduce tree traversal
+func (g *Gouch) WalkMapReduceTree(startID, endID string, mapR WalkTreeCallback, userContext interface{}) error {
+
+	if len(g.header.viewStates) == 0 {
+		return nil
+	}
+
+	for i := 0; i < len(g.header.viewStates); i++ {
+		mapR(g, 0, nil, nil, g.header.viewStates[i].subtreeSize, g.header.viewStates[i].reducedValue, userContext)
+
+		lc := lookupContext{
+			gouch:            g,
+			walkTreeCallback: mapR,
+			callbackContext:  userContext,
+			indexType:        IndexTypeMapR,
+		}
+
+		keys := [][]byte{[]byte(startID)}
+		if endID != "" {
+			keys = append(keys, []byte(endID))
+		}
+
+		lr := lookupRequest{
+			compare:         IDComparator,
+			keys:            keys,
+			fetchCallback:   lookupCallback,
+			nodeCallback:    walkNodeCallback,
+			fold:            true,
+			callbackContext: &lc,
+		}
+
+		err := g.btreeLookup(&lr, g.header.viewStates[i].pointer)
+		if err != nil {
+			return err
+		}
+	}
 	return nil
 }

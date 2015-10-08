@@ -64,7 +64,6 @@ func (g *Gouch) readHeaderAt(pos int64) (*IndexHeader, error) {
 //DecodeIndexHeader decodes the main index header
 func DecodeIndexHeader(bytes []byte) *IndexHeader {
 	if len(bytes) <= 16 {
-		fmt.Printf("Corrupt header len: %+v\n", len(bytes))
 		return nil
 	}
 	var data []byte
@@ -72,7 +71,6 @@ func DecodeIndexHeader(bytes []byte) *IndexHeader {
 
 	data, err := SnappyDecode(nil, bytes[16:])
 	if err != nil {
-		fmt.Printf("error in snappy decode: %+v\n", err)
 		return nil
 	}
 
@@ -83,45 +81,36 @@ func DecodeIndexHeader(bytes []byte) *IndexHeader {
 	arrayIndex++
 	h.numPartitions = decodeRaw16(data[arrayIndex : arrayIndex+2])
 	arrayIndex += 2
-	fmt.Printf("Version: %+v Numpartitions: %+v\n", h.version, h.numPartitions)
 
 	// BitmapSize == 128
 	h.activeBitmask = &Bitmap{data: data[arrayIndex : arrayIndex+BitmapSize]}
 	arrayIndex += BitmapSize
-	//fmt.Printf("active bitmask dump: %+v\n", h.activeBitmask.Dump())
 	h.passiveBitmask = &Bitmap{data: data[arrayIndex : arrayIndex+BitmapSize]}
 	arrayIndex += BitmapSize
-	//fmt.Printf("passive bitmask dump: %+v\n", h.passiveBitmask.Dump())
 	h.cleanupBitmask = &Bitmap{data: data[arrayIndex : arrayIndex+BitmapSize]}
 	arrayIndex += BitmapSize
-	//fmt.Printf("cleanup bitmask dump: %+v\n", h.cleanupBitmask.Dump())
 
 	numSeqs := decodeRaw16(data[arrayIndex : arrayIndex+2])
 	arrayIndex += 2
-	fmt.Printf("numSeqs: %+v\n", numSeqs)
 
 	for i := 0; i < int(numSeqs); i++ {
 		ps := partSeq{}
 		ps.partID = decodeRaw16(data[arrayIndex : arrayIndex+2])
 		arrayIndex += 2
 		ps.seq = decodeRaw48(data[arrayIndex : arrayIndex+6])
-		//fmt.Printf("partID: %+v seq: %+v\n", ps.partID, ps.seq)
 		arrayIndex += 6
 		h.seqs = append(h.seqs, ps)
 	}
 	sort.Sort(h.seqs)
-	//fmt.Printf("h.seqs: %+v\n", h.seqs)
 
 	sz := decodeRaw16(data[arrayIndex : arrayIndex+2])
 	arrayIndex += 2
-	//fmt.Printf("Size: %d\n", sz)
 
 	h.idBTreeState = decodeRootNodePointer(data[arrayIndex : arrayIndex+int(sz)])
 	arrayIndex += int(sz)
 
 	h.numViews = decodeRaw08(data[arrayIndex : arrayIndex+1])
 	arrayIndex++
-	fmt.Printf("numViews: %+v\n", h.numViews)
 
 	h.viewStates = make([]*nodePointer, int(h.numViews))
 

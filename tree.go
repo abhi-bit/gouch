@@ -43,6 +43,7 @@ func (g *Gouch) btreeLookupInner(req *lookupRequest, diskPos uint64, current, en
 				for lastItem < end && req.compare(k, req.keys[lastItem]) >= 0 {
 					lastItem++
 				}
+				//fmt.Printf("CRITICAL: current %+v lastItem %+v\n", current, lastItem)
 
 				if req.nodeCallback != nil {
 					err = req.nodeCallback(req, k, v)

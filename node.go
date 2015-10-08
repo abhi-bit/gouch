@@ -20,6 +20,9 @@ const IndexTypeBySeq int = 1
 //IndexTypeLocalDocs Local_Docs
 const IndexTypeLocalDocs int = 2
 
+//IndexTypeMapR map reduce index node type
+const IndexTypeMapR int = 3
+
 //RootBaseSize marker
 const RootBaseSize int = 12
 
@@ -97,7 +100,6 @@ func decodeRootNodePointer(data []byte) *nodePointer {
 	n := nodePointer{}
 	n.pointer = decodeRaw48(data[0:6])
 	n.subtreeSize = decodeRaw48(data[6:12])
-	fmt.Printf("Input byte array: %+v\n", len(data))
 	n.reducedValue = data[RootBaseSize:]
 	return &n
 }
@@ -193,7 +195,8 @@ func decodeKeyValue(nodeData []byte, bufPos int) ([]byte, []byte, int) {
 	valueStart := keyEnd
 	valueEnd := valueStart + int(valueLength)
 	value := nodeData[valueStart:valueEnd]
-	return key, value, valueEnd
+	//TODO why we need byte offset of 2?
+	return key[2:], value, valueEnd
 }
 
 func encodeKeyValue(key, value []byte) []byte {
@@ -224,4 +227,11 @@ func (kvi *keyValueIterator) Next() ([]byte, []byte) {
 		return key, value
 	}
 	return nil, nil
+}
+
+func (np *nodePointer) String() string {
+	if np.key == nil {
+		return fmt.Sprintf("Root Pointer: %d Subtree Size: %d ReduceValue: % x", np.pointer, np.subtreeSize, np.reducedValue)
+	}
+	return fmt.Sprintf("Key: '%s' (% x) Pointer: %d Subtree Size: %d ReduceValue: % x", np.key, np.key, np.pointer, np.subtreeSize, np.reducedValue)
 }
