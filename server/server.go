@@ -23,10 +23,6 @@ func allDocumentsCallback(g *gouch.Gouch, docInfo *gouch.DocumentInfo, userConte
 	} else {
 		userContext.(map[string]int)["count"]++
 		fmt.Fprintf(w, string(bytes))
-		/*if userContext.(map[string]int)["count"] > limit {
-			fmt.Printf("counter: %+v\n", userContext.(map[string]int)["count"])
-			return nil
-		}*/
 	}
 	return nil
 }

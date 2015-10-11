@@ -72,6 +72,9 @@ func newLeafNode() *node {
 	}
 }
 
+type sizedBuf struct {
+}
+
 type nodePointer struct {
 	key          []byte
 	pointer      uint64
@@ -149,9 +152,9 @@ func decodeLeafBtreeNode(nodeData []byte, indexType int) (*node, error) {
 func decodeByIDValue(docinfo *DocumentInfo, value []byte) {
 	docinfo.Seq = decodeRaw48(value[0:6])
 	docinfo.Size = uint64(decodeRaw32(value[6:10]))
-	//docinfo.Deleted, docinfo.bodyPosition = decode_raw_1_47_split(value[10:16])
-	//docinfo.Rev = decode_raw48(value[16:22])
-	//docinfo.ContentMeta = decode_raw08(value[22:23])
+	//docinfo.Deleted, docinfo.bodyPosition = decodeRaw1_47Split(value[10:16])
+	//docinfo.Rev = decodeRaw48(value[16:22])
+	//docinfo.ContentMeta = decodeRaw08(value[22:23])
 	//docinfo.RevMeta = value[23:]
 }
 
@@ -196,7 +199,7 @@ func decodeKeyValue(nodeData []byte, bufPos int) ([]byte, []byte, int) {
 	valueEnd := valueStart + int(valueLength)
 	value := nodeData[valueStart:valueEnd]
 	//TODO why we need byte offset of 2?
-	return key[2:], value, valueEnd
+	return key, value, valueEnd
 }
 
 func encodeKeyValue(key, value []byte) []byte {

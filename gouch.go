@@ -1,6 +1,7 @@
 package gouch
 
 import (
+	"encoding/json"
 	"fmt"
 	"io"
 	"os"
@@ -60,6 +61,11 @@ func OpenEx(filename string, options int, ops Ops) (*Gouch, error) {
 	return &gouch, nil
 }
 
+//Close clears up the open file handle
+func (g *Gouch) Close() error {
+	return g.ops.Close(g.file)
+}
+
 func (di *DocumentInfo) String() string {
 	return fmt.Sprintf("ID: '%s' Seq: %d Rev: %d Deleted: %t Size: %d BodyPosition: %d (0x%x)", di.ID, di.Seq, di.Rev, di.Deleted, di.Size, di.bodyPosition, di.bodyPosition)
 }
@@ -99,21 +105,26 @@ func walkNodeCallback(req *lookupRequest, key []byte, value []byte) error {
 		context.depth--
 		return nil
 	}
-	valueNodePointer := decodeNodePointer(value)
+	//valueNodePointer := decodeNodePointer(value)
+	valueNodePointer := &nodePointer{}
+	valueNodePointer.subtreeSize = decodeRaw48(value)
 	valueNodePointer.key = key
+	size := decodeRaw16(value)
+	valueNodePointer.reducedValue = value[14 : 14+size]
+	valueNodePointer.reducedValue = value[14:]
 	err := context.walkTreeCallback(context.gouch, context.depth, nil, key, valueNodePointer.subtreeSize, valueNodePointer.reducedValue, context.callbackContext)
 	context.depth++
 	return err
 }
 
 //DocumentInfoCallback callback for capturing metadata
-type DocumentInfoCallback func(gouch *Gouch, documentInfo *DocumentInfo, userContext interface{}, w io.Writer) error
+type DocumentInfoCallback func(gouch *Gouch, documentInfo *DocumentInfo, userContext interface{}, limit int, w io.Writer) error
 
 //AllDocuments dumps all documents based on startID and endID
-func (g *Gouch) AllDocuments(startID, endID string, cb DocumentInfoCallback, userContext interface{}, w io.Writer) error {
+func (g *Gouch) AllDocuments(startID, endID string, limit int, cb DocumentInfoCallback, userContext interface{}, w io.Writer) error {
 	wtCallback := func(gouch *Gouch, depth int, documentInfo *DocumentInfo, key []byte, subTreeSize uint64, reducedValue []byte, userContext interface{}) error {
 		if documentInfo != nil {
-			return cb(gouch, documentInfo, userContext, w)
+			return cb(gouch, documentInfo, userContext, limit, w)
 		}
 		return nil
 	}
@@ -162,10 +173,10 @@ func (g *Gouch) WalkIDTree(startID, endID string, wtcb WalkTreeCallback, userCon
 }
 
 //AllDocsMapReduce MapReduce tree dump
-func (g *Gouch) AllDocsMapReduce(startID, endID string, mapR DocumentInfoCallback, userContext interface{}, w io.Writer) error {
+func (g *Gouch) AllDocsMapReduce(startID, endID string, limit int, mapR DocumentInfoCallback, userContext interface{}, w io.Writer) error {
 	mapRCallback := func(gouch *Gouch, depth int, documentInfo *DocumentInfo, key []byte, subTreeSize uint64, reducedValue []byte, userContext interface{}) error {
 		if documentInfo != nil {
-			return mapR(gouch, documentInfo, userContext, w)
+			return mapR(gouch, documentInfo, userContext, limit, w)
 		}
 		return nil
 	}
@@ -206,6 +217,23 @@ func (g *Gouch) WalkMapReduceTree(startID, endID string, mapR WalkTreeCallback, 
 		err := g.btreeLookup(&lr, g.header.viewStates[i].pointer)
 		if err != nil {
 			return err
+		}
+	}
+	return nil
+}
+
+//DefaultDocumentCallback sample document callback function
+//TODO implement limit support
+func DefaultDocumentCallback(g *Gouch, docInfo *DocumentInfo, userContext interface{}, limit int, w io.Writer) error {
+	bytes, err := json.MarshalIndent(docInfo, "", " ")
+	if err != nil {
+		fmt.Println(err)
+	} else {
+		if userContext.(map[string]int)["count"] < limit {
+			userContext.(map[string]int)["count"]++
+			fmt.Println(string(bytes))
+		} else {
+			return nil
 		}
 	}
 	return nil
