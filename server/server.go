@@ -21,8 +21,7 @@ func allDocumentsCallback(g *gouch.Gouch, docInfo *gouch.DocumentInfo, userConte
 		fmt.Println(err)
 	} else {
 		userContext.(map[string]int)["count"]++
-		fmt.Fprintf(w, string(bytes))
-		//log.Printf(string(bytes))
+		fmt.Fprintf(w, string(bytes)+",\n")
 	}
 	return nil
 }
@@ -52,12 +51,13 @@ func runQuery(w http.ResponseWriter, r *http.Request) {
 		endKey = end[0]
 	}
 
-	fmt.Printf("startKey: %s endKey: %s limit: %d\n", startKey, endKey, limit)
+	//fmt.Printf("startKey: %s endKey: %s limit: %d\n", startKey, endKey, limit)
 
 	context := map[string]int{"count": 0}
 
 	now := time.Now()
 	g, _ := gouch.Open("/Users/asingh/repo/go/src/github.com/abhi-bit/gouch/example/abhi_pymc_index", os.O_RDONLY)
+	//g, _ := gouch.Open("/Users/asingh/repo/go/src/github.com/abhi-bit/gouch/example/1M_pymc_index", os.O_RDONLY)
 	err := g.AllDocsMapReduce(startKey, endKey, allDocumentsCallback, context, w, limit)
 	if err != nil {
 		fmt.Printf("Failed tree traversal\n")

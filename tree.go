@@ -35,54 +35,67 @@ func (g *Gouch) btreeLookupInner(req *lookupRequest, diskPos uint64, current, en
 
 	if nodeData[0] == BtreeInterior {
 		kvIterator := newKeyValueIterator(nodeData[1:])
-		for k, v := kvIterator.Next(); k != nil && current < end; k, v = kvIterator.Next() {
-			cmp := req.compare(k, req.keys[current])
-			if cmp >= 0 {
-				if req.fold {
-					req.inFold = true
-				}
 
-				// Descend into the pointed to node.
-				// with all keys < item key.
-				lastItem := current + 1
-				for lastItem < end && req.compare(k, req.keys[lastItem]) >= 0 {
-					lastItem++
-				}
-				//fmt.Printf("CRITICAL: current %+v lastItem %+v\n", current, lastItem)
+		context := req.callbackContext.(*lookupContext)
+		count := context.callbackContext.(map[string]int)["count"]
 
-				if req.nodeCallback != nil {
-					err = req.nodeCallback(req, k, v)
+		if count < req.limit {
+
+			for k, v := kvIterator.Next(); k != nil && current < end; k, v = kvIterator.Next() {
+				cmp := req.compare(k, req.keys[current])
+				if cmp >= 0 {
+					if req.fold {
+						req.inFold = true
+					}
+
+					// Descend into the pointed to node.
+					// with all keys < item key.
+					lastItem := current + 1
+					for lastItem < end && req.compare(k, req.keys[lastItem]) >= 0 {
+						lastItem++
+					}
+
+					if req.nodeCallback != nil {
+						err = req.nodeCallback(req, k, v)
+						if err != nil {
+							return err
+						}
+					}
+
+					valNodePointer := decodeNodePointer(v)
+					err = g.btreeLookupInner(req, valNodePointer.pointer, current, lastItem)
 					if err != nil {
 						return err
 					}
-				}
 
-				valNodePointer := decodeNodePointer(v)
-				err = g.btreeLookupInner(req, valNodePointer.pointer, current, lastItem)
-				if err != nil {
-					return err
-				}
-
-				if !req.inFold {
-					current = lastItem
-				}
-				if req.nodeCallback != nil {
-					err = req.nodeCallback(req, nil, nil)
-					if err != nil {
-						return err
+					if !req.inFold {
+						current = lastItem
+					}
+					if req.nodeCallback != nil {
+						err = req.nodeCallback(req, nil, nil)
+						if err != nil {
+							return err
+						}
 					}
 				}
 			}
+		} else {
+			return nil
 		}
 	} else if nodeData[0] == BtreeLeaf {
 		kvIterator := newKeyValueIterator(nodeData[1:])
 
 		context := req.callbackContext.(*lookupContext)
 		count := context.callbackContext.(map[string]int)["count"]
+
+		//look if we already dumped limit KV pairs
 		if count < req.limit {
 			for k, v := kvIterator.Next(); k != nil && current < end; k, v = kvIterator.Next() {
+
 				count := context.callbackContext.(map[string]int)["count"]
+				//look if we already dumped limit KV pairs
 				if count < req.limit {
+
 					cmp := req.compare(k, req.keys[current])
 					if cmp >= 0 && req.fold && !req.inFold {
 						req.inFold = true

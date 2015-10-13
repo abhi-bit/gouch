@@ -7,6 +7,7 @@ import (
 	"io"
 	"log"
 	"os"
+	"runtime"
 	"runtime/pprof"
 
 	"github.com/abhi-bit/gouch"
@@ -21,7 +22,6 @@ func allDocumentsCallback(g *gouch.Gouch, docInfo *gouch.DocumentInfo, userConte
 	} else {
 		userContext.(map[string]int)["count"]++
 		fmt.Println(string(bytes))
-		fmt.Printf("1st count: %d\n", userContext.(map[string]int)["count"])
 	}
 	return nil
 }
@@ -29,7 +29,8 @@ func allDocumentsCallback(g *gouch.Gouch, docInfo *gouch.DocumentInfo, userConte
 func main() {
 	// godebug
 	_ = "breakpoint"
-
+	//res := make(chan int)
+	runtime.GOMAXPROCS(8)
 	flag.Parse()
 
 	if *cpuprofile != "" {
@@ -42,16 +43,16 @@ func main() {
 	}
 
 	var w io.Writer
-	context := map[string]int{"count": 0}
+	//context := map[string]int{"count": 0}
 
 	//g, err := gouch.Open("./index_with_1_entry", os.O_RDONLY)
 
 	//100K records
-	//g, err := gouch.Open("./abhi_pymc_index", os.O_RDONLY)
+	g, err := gouch.Open("./abhi_pymc_index", os.O_RDONLY)
 	//g, err := gouch.Open("./composite_key_default", os.O_RDONLY)
 
 	//1M records
-	g, err := gouch.Open("1M_pymc_index", os.O_RDONLY)
+	//g, err := gouch.Open("1M_pymc_index", os.O_RDONLY)
 
 	if err != nil {
 		fmt.Errorf("Crashed while opening file\n")
@@ -63,6 +64,20 @@ func main() {
 	//err = g.AllDocuments("", "", 100, allDocumentsCallback, context, w)
 
 	//Map-reduce Btree
-	err = g.AllDocsMapReduce("", "", allDocumentsCallback, context, w, 100)
+	/*for i := 0; i < 100; i++ {
+		go func(i int) {
+			context := map[string]int{"count": 0}
+			err = g.AllDocsMapReduce("", "", allDocumentsCallback, context, w, 10)
+			res <- i
+		}(i)
+	}
 
+	for i := 0; i < 100; i++ {
+		select {
+		case resi := <-res:
+			fmt.Println(resi)
+		}
+	}*/
+	context := map[string]int{"count": 0}
+	err = g.AllDocsMapReduce("", "", allDocumentsCallback, context, w, 1000)
 }

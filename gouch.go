@@ -75,9 +75,18 @@ func lookupCallback(req *lookupRequest, key []byte, value []byte) error {
 	docinfo := DocumentInfo{}
 	if context.indexType == IndexTypeByID || context.indexType == IndexTypeMapR {
 		sz := decodeRaw16(key[:2])
-		docinfo.ID = string(key[len(key)-int(sz)+2:])
-		docinfo.Key = string(key[2 : len(key)-int(sz)+2])
-		docinfo.Value = string(value[5:])
+
+		//detect key type i.e. either string or composite key
+		//composite keys
+		if string(key[len(key)-int(sz)-1]) == "]" {
+			docinfo.ID = string(key[len(key)-int(sz):])
+			docinfo.Key = string(key[2 : len(key)-int(sz)])
+			docinfo.Value = string(value[5:])
+		} else {
+			docinfo.ID = string(key[len(key)-int(sz)+2:])
+			docinfo.Key = string(key[2 : len(key)-int(sz)+2])
+			docinfo.Value = string(value[5:])
+		}
 	}
 
 	if context.walkTreeCallback != nil {
@@ -187,7 +196,7 @@ func (g *Gouch) AllDocsMapReduce(startID, endID string, mapR DocumentInfoCallbac
 //WalkMapReduceTree MapReduce tree traversal
 func (g *Gouch) WalkMapReduceTree(startID, endID string, mapR WalkTreeCallback, userContext interface{}, limit int) error {
 
-	if g == nil {
+	/*if g == nil {
 		return nil
 	}
 
@@ -197,7 +206,7 @@ func (g *Gouch) WalkMapReduceTree(startID, endID string, mapR WalkTreeCallback, 
 
 	if g.header.viewStates == nil {
 		return nil
-	}
+	}*/
 
 	if len(g.header.viewStates) == 0 {
 		return nil
