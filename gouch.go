@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"io"
 	"os"
-	"strings"
 )
 
 //Gouch handler for reading a index file
@@ -75,8 +74,9 @@ func lookupCallback(req *lookupRequest, key []byte, value []byte) error {
 
 	docinfo := DocumentInfo{}
 	if context.indexType == IndexTypeByID || context.indexType == IndexTypeMapR {
-		info := strings.Split(string(key[2:]), "]")
-		docinfo.ID, docinfo.Key = info[1], info[0]+"]"
+		sz := decodeRaw16(key[:2])
+		docinfo.ID = string(key[len(key)-int(sz)+2:])
+		docinfo.Key = string(key[2 : len(key)-int(sz)+2])
 		docinfo.Value = string(value[5:])
 	}
 

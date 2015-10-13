@@ -46,7 +46,7 @@ func main() {
 	//g, err := gouch.Open("./index_with_1_entry", os.O_RDONLY)
 
 	//100K records
-	//g, err := gouch.Open("pymc0_index", os.O_RDONLY)
+	//g, err := gouch.Open("./abhi_pymc_index", os.O_RDONLY)
 	//g, err := gouch.Open("./composite_key_default", os.O_RDONLY)
 
 	//1M records

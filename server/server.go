@@ -15,9 +15,8 @@ import (
 
 var limit int
 
-func allDocumentsCallback(g *gouch.Gouch, docInfo *gouch.DocumentInfo, userContext interface{}, w io.Writer) error {
-	//bytes, err := json.MarshalIndent(docInfo, "", "  ")
-	bytes, err := json.MarshalIndent(docInfo.ID, "", "  ")
+func allDocumentsCallback(g *gouch.Gouch, docInfo *gouch.DocumentInfo, userContext interface{}, limit int, w io.Writer) error {
+	bytes, err := json.Marshal(docInfo)
 	if err != nil {
 		fmt.Println(err)
 	} else {
@@ -57,8 +56,8 @@ func runQuery(w http.ResponseWriter, r *http.Request) {
 	context := map[string]int{"count": 0}
 
 	now := time.Now()
-	g, _ := gouch.Open("/Users/asingh/repo/go/src/github.com/abhi-bit/gouch/example/pymc0_index", os.O_RDONLY)
-	err := g.AllDocsMapReduce(startKey, endKey, allDocumentsCallback, context, w)
+	g, _ := gouch.Open("/Users/asingh/repo/go/src/github.com/abhi-bit/gouch/example/abhi_pymc_index", os.O_RDONLY)
+	err := g.AllDocsMapReduce(startKey, endKey, 100, allDocumentsCallback, context, w)
 	if err != nil {
 		fmt.Printf("Failed tree traversal\n")
 	}
