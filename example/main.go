@@ -15,13 +15,12 @@ import (
 var cpuprofile = flag.String("cpuprofile", "", "write cpu profile to a file")
 
 func allDocumentsCallback(g *gouch.Gouch, docInfo *gouch.DocumentInfo, userContext interface{}, limit int, w io.Writer) error {
-	//bytes, err := json.MarshalIndent(docInfo, "", "  ")
-	_, err := json.MarshalIndent(docInfo, "", "  ")
+	bytes, err := json.Marshal(docInfo)
 	if err != nil {
 		fmt.Println(err)
 	} else {
 		userContext.(map[string]int)["count"]++
-		//fmt.Println(string(bytes))
+		fmt.Println(string(bytes))
 	}
 	return nil
 }
@@ -48,12 +47,11 @@ func main() {
 
 	//100K records
 	//g, err := gouch.Open("pymc0_index", os.O_RDONLY)
+	//g, err := gouch.Open("./composite_key_default", os.O_RDONLY)
 
 	//1M records
 	g, err := gouch.Open("1M_pymc_index", os.O_RDONLY)
 
-	//1M records
-	//g, err := gouch.Open("1M_pymc_index", os.O_RDONLY)
 	if err != nil {
 		fmt.Errorf("Crashed while opening file\n")
 	}
@@ -61,9 +59,9 @@ func main() {
 	defer g.Close()
 	//By-Id Btree
 	//err = g.AllDocuments("", "", 100, allDocumentsCallback, context, w)
-	err = g.AllDocuments("", "", 100, allDocumentsCallback, context, w)
+	//err = g.AllDocuments("", "", 100, allDocumentsCallback, context, w)
 
 	//Map-reduce Btree
-	//err = g.AllDocsMapReduce("", "", 100, allDocumentsCallback, context, w)
+	err = g.AllDocsMapReduce("", "", 100, allDocumentsCallback, context, w)
 
 }

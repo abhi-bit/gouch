@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"strings"
 )
 
 //Gouch handler for reading a index file
@@ -17,14 +18,9 @@ type Gouch struct {
 
 //DocumentInfo Handler for capturing metadata
 type DocumentInfo struct {
-	ID           string `json:"id"`          // document identifier
-	Seq          uint64 `json:"seq"`         // sequence number in database
-	Rev          uint64 `json:"rev"`         // revision number of document
-	RevMeta      []byte `json:"revMeta"`     // additional revision meta-data (uninterpreted by Gouchstore)
-	ContentMeta  uint8  `json:"contentMeta"` // content meta-data flags
-	Deleted      bool   `json:"deleted"`     // is the revision deleted?
-	Size         uint64 `json:"size"`        // size of document data in bytes
-	bodyPosition uint64 // byte offset of document body in file
+	ID    string `json:"id"`    // document identifier
+	Key   string `json:"key"`   // emitted key
+	Value string `json:"value"` // emitted value
 }
 
 //Open up index file with defined perms
@@ -67,7 +63,7 @@ func (g *Gouch) Close() error {
 }
 
 func (di *DocumentInfo) String() string {
-	return fmt.Sprintf("ID: '%s' Seq: %d Rev: %d Deleted: %t Size: %d BodyPosition: %d (0x%x)", di.ID, di.Seq, di.Rev, di.Deleted, di.Size, di.bodyPosition, di.bodyPosition)
+	return fmt.Sprintf("ID: '%s' Key: '%s' Value: '%s' ", di.ID, di.Key, di.Value)
 }
 
 func lookupCallback(req *lookupRequest, key []byte, value []byte) error {
@@ -79,11 +75,9 @@ func lookupCallback(req *lookupRequest, key []byte, value []byte) error {
 
 	docinfo := DocumentInfo{}
 	if context.indexType == IndexTypeByID || context.indexType == IndexTypeMapR {
-		docinfo.ID = string(key)
-		decodeByIDValue(&docinfo, value)
-	} else if context.indexType == IndexTypeBySeq {
-		docinfo.Seq = decodeRaw48(key)
-		decodeBySeqValue(&docinfo, value)
+		info := strings.Split(string(key[2:]), "]")
+		docinfo.ID, docinfo.Key = info[1], info[0]+"]"
+		docinfo.Value = string(value[5:])
 	}
 
 	if context.walkTreeCallback != nil {

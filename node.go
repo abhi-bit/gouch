@@ -133,61 +133,16 @@ func decodeLeafBtreeNode(nodeData []byte, indexType int) (*node, error) {
 	bufPos := 1
 	resultNode := newLeafNode()
 	for bufPos < len(nodeData) {
-		key, value, end := decodeKeyValue(nodeData, bufPos)
+		key, _, end := decodeKeyValue(nodeData, bufPos)
 		docinfo := DocumentInfo{}
 		if indexType == IndexTypeByID {
 			docinfo.ID = string(key)
-			decodeByIDValue(&docinfo, value)
-		} else if indexType == IndexTypeBySeq {
-			docinfo.Seq = decodeRaw48(key)
-			decodeBySeqValue(&docinfo, value)
 		}
 
 		resultNode.documents = append(resultNode.documents, &docinfo)
 		bufPos = end
 	}
 	return resultNode, nil
-}
-
-func decodeByIDValue(docinfo *DocumentInfo, value []byte) {
-	docinfo.Seq = decodeRaw48(value[0:6])
-	docinfo.Size = uint64(decodeRaw32(value[6:10]))
-	//docinfo.Deleted, docinfo.bodyPosition = decodeRaw1_47Split(value[10:16])
-	//docinfo.Rev = decodeRaw48(value[16:22])
-	//docinfo.ContentMeta = decodeRaw08(value[22:23])
-	//docinfo.RevMeta = value[23:]
-}
-
-func (d DocumentInfo) encodeByID() []byte {
-	buf := new(bytes.Buffer)
-	buf.Write(encodeRaw48(d.Seq))
-	buf.Write(encodeRaw32(d.Size))
-	buf.Write(encodeRaw1_47Split(d.Deleted, d.bodyPosition))
-	buf.Write(encodeRaw48(d.Rev))
-	buf.Write(encodeRaw08(d.ContentMeta))
-	buf.Write(d.RevMeta)
-	return buf.Bytes()
-}
-
-func decodeBySeqValue(docinfo *DocumentInfo, value []byte) {
-	idSize, docSize := decodeRaw12_28Split(value[0:5])
-	docinfo.Size = uint64(docSize)
-	docinfo.Deleted, docinfo.bodyPosition = decodeRaw1_47Split(value[5:12])
-	docinfo.Rev = decodeRaw48(value[11:17])
-	docinfo.ContentMeta = decodeRaw08(value[17:18])
-	docinfo.ID = string(value[18 : 18+idSize])
-	docinfo.RevMeta = value[18+idSize:]
-}
-
-func (d DocumentInfo) encodeBySeq() []byte {
-	buf := new(bytes.Buffer)
-	buf.Write(encodeRaw12_28Split(uint32(len(d.ID)), uint32(d.Size)))
-	buf.Write(encodeRaw1_47Split(d.Deleted, d.bodyPosition))
-	buf.Write(encodeRaw48(d.Rev))
-	buf.Write(encodeRaw08(d.ContentMeta))
-	buf.Write([]byte(d.ID))
-	buf.Write(d.RevMeta)
-	return buf.Bytes()
 }
 
 func decodeKeyValue(nodeData []byte, bufPos int) ([]byte, []byte, int) {
