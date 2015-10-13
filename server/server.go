@@ -15,13 +15,14 @@ import (
 
 var limit int
 
-func allDocumentsCallback(g *gouch.Gouch, docInfo *gouch.DocumentInfo, userContext interface{}, limit int, w io.Writer) error {
+func allDocumentsCallback(g *gouch.Gouch, docInfo *gouch.DocumentInfo, userContext interface{}, w io.Writer, limit int) error {
 	bytes, err := json.Marshal(docInfo)
 	if err != nil {
 		fmt.Println(err)
 	} else {
 		userContext.(map[string]int)["count"]++
 		fmt.Fprintf(w, string(bytes))
+		//log.Printf(string(bytes))
 	}
 	return nil
 }
@@ -36,8 +37,8 @@ func runQuery(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Connection", "keep-alive")
 	w.Header().Set("Cache-Control", "no-cache")
 
-	var startKey string
-	var endKey string
+	startKey := ""
+	endKey := ""
 	var limit int
 
 	params := r.URL.Query()
@@ -57,10 +58,11 @@ func runQuery(w http.ResponseWriter, r *http.Request) {
 
 	now := time.Now()
 	g, _ := gouch.Open("/Users/asingh/repo/go/src/github.com/abhi-bit/gouch/example/abhi_pymc_index", os.O_RDONLY)
-	err := g.AllDocsMapReduce(startKey, endKey, 100, allDocumentsCallback, context, w)
+	err := g.AllDocsMapReduce(startKey, endKey, allDocumentsCallback, context, w, limit)
 	if err != nil {
 		fmt.Printf("Failed tree traversal\n")
 	}
+	g.Close()
 	fmt.Fprintf(w, "Time elapsed: %v\n", time.Since(now))
 
 }

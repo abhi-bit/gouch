@@ -95,10 +95,17 @@ func lookupCallback(req *lookupRequest, key []byte, value []byte) error {
 
 func walkNodeCallback(req *lookupRequest, key []byte, value []byte) error {
 	context := req.callbackContext.(*lookupContext)
+	count := context.callbackContext.(map[string]int)["count"]
+
+	if count > req.limit {
+		return nil
+	}
+
 	if value == nil {
 		context.depth--
 		return nil
 	}
+
 	//valueNodePointer := decodeNodePointer(value)
 	valueNodePointer := &nodePointer{}
 	valueNodePointer.subtreeSize = decodeRaw48(value)
@@ -112,24 +119,24 @@ func walkNodeCallback(req *lookupRequest, key []byte, value []byte) error {
 }
 
 //DocumentInfoCallback callback for capturing metadata
-type DocumentInfoCallback func(gouch *Gouch, documentInfo *DocumentInfo, userContext interface{}, limit int, w io.Writer) error
+type DocumentInfoCallback func(gouch *Gouch, documentInfo *DocumentInfo, userContext interface{}, w io.Writer, limit int) error
 
 //AllDocuments dumps all documents based on startID and endID
-func (g *Gouch) AllDocuments(startID, endID string, limit int, cb DocumentInfoCallback, userContext interface{}, w io.Writer) error {
+func (g *Gouch) AllDocuments(startID, endID string, cb DocumentInfoCallback, userContext interface{}, w io.Writer, limit int) error {
 	wtCallback := func(gouch *Gouch, depth int, documentInfo *DocumentInfo, key []byte, subTreeSize uint64, reducedValue []byte, userContext interface{}) error {
 		if documentInfo != nil {
-			return cb(gouch, documentInfo, userContext, limit, w)
+			return cb(gouch, documentInfo, userContext, w, limit)
 		}
 		return nil
 	}
-	return g.WalkIDTree(startID, endID, wtCallback, userContext)
+	return g.WalkIDTree(startID, endID, wtCallback, userContext, limit)
 }
 
 //WalkTreeCallback callback for traversing btree
 type WalkTreeCallback func(gouch *Gouch, depth int, documentInfo *DocumentInfo, key []byte, subTreeSize uint64, reducedValue []byte, userContext interface{}) error
 
 //WalkIDTree traverses a btree based on startID and endID
-func (g *Gouch) WalkIDTree(startID, endID string, wtcb WalkTreeCallback, userContext interface{}) error {
+func (g *Gouch) WalkIDTree(startID, endID string, wtcb WalkTreeCallback, userContext interface{}, limit int) error {
 
 	if g.header.idBTreeState == nil {
 		return nil
@@ -167,18 +174,30 @@ func (g *Gouch) WalkIDTree(startID, endID string, wtcb WalkTreeCallback, userCon
 }
 
 //AllDocsMapReduce MapReduce tree dump
-func (g *Gouch) AllDocsMapReduce(startID, endID string, limit int, mapR DocumentInfoCallback, userContext interface{}, w io.Writer) error {
+func (g *Gouch) AllDocsMapReduce(startID, endID string, mapR DocumentInfoCallback, userContext interface{}, w io.Writer, limit int) error {
 	mapRCallback := func(gouch *Gouch, depth int, documentInfo *DocumentInfo, key []byte, subTreeSize uint64, reducedValue []byte, userContext interface{}) error {
 		if documentInfo != nil {
-			return mapR(gouch, documentInfo, userContext, limit, w)
+			return mapR(gouch, documentInfo, userContext, w, limit)
 		}
 		return nil
 	}
-	return g.WalkMapReduceTree(startID, endID, mapRCallback, userContext)
+	return g.WalkMapReduceTree(startID, endID, mapRCallback, userContext, limit)
 }
 
 //WalkMapReduceTree MapReduce tree traversal
-func (g *Gouch) WalkMapReduceTree(startID, endID string, mapR WalkTreeCallback, userContext interface{}) error {
+func (g *Gouch) WalkMapReduceTree(startID, endID string, mapR WalkTreeCallback, userContext interface{}, limit int) error {
+
+	if g == nil {
+		return nil
+	}
+
+	if g.header == nil {
+		return nil
+	}
+
+	if g.header.viewStates == nil {
+		return nil
+	}
 
 	if len(g.header.viewStates) == 0 {
 		return nil
@@ -206,6 +225,7 @@ func (g *Gouch) WalkMapReduceTree(startID, endID string, mapR WalkTreeCallback, 
 			nodeCallback:    walkNodeCallback,
 			fold:            true,
 			callbackContext: &lc,
+			limit:           limit,
 		}
 
 		err := g.btreeLookup(&lr, g.header.viewStates[i].pointer)

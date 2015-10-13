@@ -1,5 +1,9 @@
 package gouch
 
+import (
+//	"fmt"
+)
+
 type lookupContext struct {
 	gouch                *Gouch
 	documentInfoCallback DocumentInfoCallback
@@ -18,6 +22,7 @@ type lookupRequest struct {
 	fetchCallback   callback
 	nodeCallback    callback
 	callbackContext interface{}
+	limit           int
 }
 
 type callback func(req *lookupRequest, key []byte, value []byte) error
@@ -71,28 +76,40 @@ func (g *Gouch) btreeLookupInner(req *lookupRequest, diskPos uint64, current, en
 		}
 	} else if nodeData[0] == BtreeLeaf {
 		kvIterator := newKeyValueIterator(nodeData[1:])
-		for k, v := kvIterator.Next(); k != nil && current < end; k, v = kvIterator.Next() {
-			cmp := req.compare(k, req.keys[current])
-			if cmp >= 0 && req.fold && !req.inFold {
-				req.inFold = true
-			} else if req.inFold && (current+1) < end && req.compare(k, req.keys[current+1]) > 0 {
-				//We've hit a key past the end of our range.
-				req.inFold = false
-				req.fold = false
-				current = end
-			}
 
-			if cmp == 0 || (cmp > 0 && req.inFold) {
-				// Found
-				err = req.fetchCallback(req, k, v)
-				if err != nil {
-					return err
-				}
+		context := req.callbackContext.(*lookupContext)
+		count := context.callbackContext.(map[string]int)["count"]
+		if count < req.limit {
+			for k, v := kvIterator.Next(); k != nil && current < end; k, v = kvIterator.Next() {
+				count := context.callbackContext.(map[string]int)["count"]
+				if count < req.limit {
+					cmp := req.compare(k, req.keys[current])
+					if cmp >= 0 && req.fold && !req.inFold {
+						req.inFold = true
+					} else if req.inFold && (current+1) < end && req.compare(k, req.keys[current+1]) > 0 {
+						//We've hit a key past the end of our range.
+						req.inFold = false
+						req.fold = false
+						current = end
+					}
 
-				if !req.inFold {
-					current++
+					if cmp == 0 || (cmp > 0 && req.inFold) {
+						// Found
+						err = req.fetchCallback(req, k, v)
+						if err != nil {
+							return err
+						}
+
+						if !req.inFold {
+							current++
+						}
+					}
+				} else {
+					return nil
 				}
 			}
+		} else {
+			return nil
 		}
 	}
 

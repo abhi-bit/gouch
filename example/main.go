@@ -14,13 +14,14 @@ import (
 
 var cpuprofile = flag.String("cpuprofile", "", "write cpu profile to a file")
 
-func allDocumentsCallback(g *gouch.Gouch, docInfo *gouch.DocumentInfo, userContext interface{}, limit int, w io.Writer) error {
+func allDocumentsCallback(g *gouch.Gouch, docInfo *gouch.DocumentInfo, userContext interface{}, w io.Writer, limit int) error {
 	bytes, err := json.Marshal(docInfo)
 	if err != nil {
 		fmt.Println(err)
 	} else {
 		userContext.(map[string]int)["count"]++
 		fmt.Println(string(bytes))
+		fmt.Printf("1st count: %d\n", userContext.(map[string]int)["count"])
 	}
 	return nil
 }
@@ -62,6 +63,6 @@ func main() {
 	//err = g.AllDocuments("", "", 100, allDocumentsCallback, context, w)
 
 	//Map-reduce Btree
-	err = g.AllDocsMapReduce("", "", 100, allDocumentsCallback, context, w)
+	err = g.AllDocsMapReduce("", "", allDocumentsCallback, context, w, 100)
 
 }
