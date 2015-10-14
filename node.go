@@ -134,9 +134,10 @@ func decodeLeafBtreeNode(nodeData []byte, indexType int) (*node, error) {
 	resultNode := newLeafNode()
 	for bufPos < len(nodeData) {
 		key, _, end := decodeKeyValue(nodeData, bufPos)
+		//TODO: Add sync.Pool here
 		docinfo := DocumentInfo{}
 		if indexType == IndexTypeByID {
-			docinfo.ID = string(key)
+			docinfo.ID = key
 		}
 
 		resultNode.documents = append(resultNode.documents, &docinfo)

@@ -17,8 +17,7 @@ var cpuprofile = flag.String("cpuprofile", "", "write cpu profile to a file")
 
 func allDocumentsCallback(g *gouch.Gouch, docInfo *gouch.DocumentInfo, userContext interface{}, w io.Writer) error {
 	//bytes, err := json.Marshal(docInfo)
-	bytes := "{\"id\":\"" + docInfo.ID + "\",\"key\":" + docInfo.Key + ",\"value\":" + docInfo.Value + "},"
-	//{"id":"pymc0","key":"\"pymc0\"","value":"\"abhi\""}
+	bytes := "{\"id\":\"" + string(docInfo.ID) + "\",\"key\":" + string(docInfo.Key) + ",\"value\":" + string(docInfo.Value) + "},"
 	userContext.(map[string]int)["count"]++
 	fmt.Println(bytes)
 	return nil

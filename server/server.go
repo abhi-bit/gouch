@@ -15,7 +15,8 @@ import (
 var limit int
 
 func allDocumentsCallback(g *gouch.Gouch, docInfo *gouch.DocumentInfo, userContext interface{}, w io.Writer) error {
-	bytes := "{\"id\":\"" + docInfo.ID + "\",\"key\":" + docInfo.Key + ",\"value\":" + docInfo.Value + "},"
+	bytes := "{\"id\":\"" + string(docInfo.ID) + "\",\"key\":" +
+		string(docInfo.Key) + ",\"value\":" + string(docInfo.Value) + "},"
 	userContext.(map[string]int)["count"]++
 	fmt.Fprintf(w, string(bytes)+",\n")
 	return nil

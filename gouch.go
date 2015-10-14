@@ -17,9 +17,9 @@ type Gouch struct {
 
 //DocumentInfo Handler for capturing metadata
 type DocumentInfo struct {
-	ID    string `json:"id"`    // document identifier
-	Key   string `json:"key"`   // emitted key
-	Value string `json:"value"` // emitted value
+	ID    []byte `json:"id"`    // document identifier
+	Key   []byte `json:"key"`   // emitted key
+	Value []byte `json:"value"` // emitted value
 }
 
 //Open up index file with defined perms
@@ -72,33 +72,39 @@ func lookupCallback(req *lookupRequest, key []byte, value []byte) error {
 
 	context := req.callbackContext.(*lookupContext)
 
-	docinfo := DocumentInfo{}
-	if context.indexType == IndexTypeByID || context.indexType == IndexTypeMapR {
-		sz := decodeRaw16(key[:2])
+	var docinfo DocumentInfo
 
-		//detect key type i.e. either string or composite key
-		//composite keys
-		if string(key[len(key)-int(sz)-1]) == "]" {
-			docinfo.ID = string(key[len(key)-int(sz):])
-			docinfo.Key = string(key[2 : len(key)-int(sz)])
-			docinfo.Value = string(value[5:])
-		} else {
-			docinfo.ID = string(key[len(key)-int(sz)+2:])
-			docinfo.Key = string(key[2 : len(key)-int(sz)+2])
-			docinfo.Value = string(value[5:])
+	// Using sync.Pool
+	if d, ok := documentInfoPool.Get().(DocumentInfo); ok {
+
+		if context.indexType == IndexTypeByID || context.indexType == IndexTypeMapR {
+			sz := decodeRaw16(key[:2])
+
+			//detect key type i.e. either string or composite key
+			//composite keys
+			if string(key[len(key)-int(sz)-1]) == "]" {
+				docinfo.ID = key[len(key)-int(sz):]
+				docinfo.Key = key[2 : len(key)-int(sz)]
+				docinfo.Value = value[5:]
+			} else {
+				docinfo.ID = key[len(key)-int(sz)+2:]
+				docinfo.Key = key[2 : len(key)-int(sz)+2]
+				docinfo.Value = value[5:]
+			}
 		}
+
+		if context.walkTreeCallback != nil {
+			if context.indexType == IndexTypeLocalDocs {
+				// note we pass the non-initialized docinfo so we can at least detect that its a leaf
+				return context.walkTreeCallback(context.gouch, context.depth, &docinfo, key, 0, value, context.callbackContext)
+			}
+			return context.walkTreeCallback(context.gouch, context.depth, &docinfo, nil, 0, nil, context.callbackContext)
+		} /*else if context.documentInfoCallback != nil {
+			return context.documentInfoCallback(context.gouch, &docinfo, context.callbackContext)
+		}*/
+
+		documentInfoPool.Put(d)
 	}
-
-	if context.walkTreeCallback != nil {
-		if context.indexType == IndexTypeLocalDocs {
-			// note we pass the non-initialized docinfo so we can at least detect that its a leaf
-			return context.walkTreeCallback(context.gouch, context.depth, &docinfo, key, 0, value, context.callbackContext)
-		}
-		return context.walkTreeCallback(context.gouch, context.depth, &docinfo, nil, 0, nil, context.callbackContext)
-	} /*else if context.documentInfoCallback != nil {
-		return context.documentInfoCallback(context.gouch, &docinfo, context.callbackContext)
-	}*/
-
 	return nil
 }
 
