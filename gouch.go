@@ -128,13 +128,13 @@ func walkNodeCallback(req *lookupRequest, key []byte, value []byte) error {
 }
 
 //DocumentInfoCallback callback for capturing metadata
-type DocumentInfoCallback func(gouch *Gouch, documentInfo *DocumentInfo, userContext interface{}, w io.Writer, limit int) error
+type DocumentInfoCallback func(gouch *Gouch, documentInfo *DocumentInfo, userContext interface{}, w io.Writer) error
 
 //AllDocuments dumps all documents based on startID and endID
 func (g *Gouch) AllDocuments(startID, endID string, cb DocumentInfoCallback, userContext interface{}, w io.Writer, limit int) error {
 	wtCallback := func(gouch *Gouch, depth int, documentInfo *DocumentInfo, key []byte, subTreeSize uint64, reducedValue []byte, userContext interface{}) error {
 		if documentInfo != nil {
-			return cb(gouch, documentInfo, userContext, w, limit)
+			return cb(gouch, documentInfo, userContext, w)
 		}
 		return nil
 	}
@@ -184,9 +184,13 @@ func (g *Gouch) WalkIDTree(startID, endID string, wtcb WalkTreeCallback, userCon
 
 //AllDocsMapReduce MapReduce tree dump
 func (g *Gouch) AllDocsMapReduce(startID, endID string, mapR DocumentInfoCallback, userContext interface{}, w io.Writer, limit int) error {
+
+	s = newSlicePool(func() []byte { return make([]byte, 4) })
+	//p = newSlicePool(func() []byte { return make([]byte, 2) })
+
 	mapRCallback := func(gouch *Gouch, depth int, documentInfo *DocumentInfo, key []byte, subTreeSize uint64, reducedValue []byte, userContext interface{}) error {
 		if documentInfo != nil {
-			return mapR(gouch, documentInfo, userContext, w, limit)
+			return mapR(gouch, documentInfo, userContext, w)
 		}
 		return nil
 	}
@@ -195,18 +199,6 @@ func (g *Gouch) AllDocsMapReduce(startID, endID string, mapR DocumentInfoCallbac
 
 //WalkMapReduceTree MapReduce tree traversal
 func (g *Gouch) WalkMapReduceTree(startID, endID string, mapR WalkTreeCallback, userContext interface{}, limit int) error {
-
-	/*if g == nil {
-		return nil
-	}
-
-	if g.header == nil {
-		return nil
-	}
-
-	if g.header.viewStates == nil {
-		return nil
-	}*/
 
 	if len(g.header.viewStates) == 0 {
 		return nil
@@ -247,17 +239,14 @@ func (g *Gouch) WalkMapReduceTree(startID, endID string, mapR WalkTreeCallback, 
 
 //DefaultDocumentCallback sample document callback function
 //TODO implement limit support
-func DefaultDocumentCallback(g *Gouch, docInfo *DocumentInfo, userContext interface{}, limit int, w io.Writer) error {
-	bytes, err := json.MarshalIndent(docInfo, "", " ")
+func DefaultDocumentCallback(g *Gouch, docInfo *DocumentInfo, userContext interface{}, w io.Writer) error {
+	//bytes, err := json.Marshal(docInfo)
+	_, err := json.Marshal(docInfo)
 	if err != nil {
 		fmt.Println(err)
 	} else {
-		if userContext.(map[string]int)["count"] < limit {
-			userContext.(map[string]int)["count"]++
-			fmt.Println(string(bytes))
-		} else {
-			return nil
-		}
+		userContext.(map[string]int)["count"]++
+		//fmt.Println(string(bytes))
 	}
 	return nil
 }

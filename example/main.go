@@ -1,7 +1,7 @@
 package main
 
 import (
-	"encoding/json"
+	//"encoding/json"
 	"flag"
 	"fmt"
 	"io"
@@ -15,14 +15,12 @@ import (
 
 var cpuprofile = flag.String("cpuprofile", "", "write cpu profile to a file")
 
-func allDocumentsCallback(g *gouch.Gouch, docInfo *gouch.DocumentInfo, userContext interface{}, w io.Writer, limit int) error {
-	bytes, err := json.Marshal(docInfo)
-	if err != nil {
-		fmt.Println(err)
-	} else {
-		userContext.(map[string]int)["count"]++
-		fmt.Println(string(bytes))
-	}
+func allDocumentsCallback(g *gouch.Gouch, docInfo *gouch.DocumentInfo, userContext interface{}, w io.Writer) error {
+	//bytes, err := json.Marshal(docInfo)
+	bytes := "{\"id\":\"" + docInfo.ID + "\",\"key\":" + docInfo.Key + ",\"value\":" + docInfo.Value + "},"
+	//{"id":"pymc0","key":"\"pymc0\"","value":"\"abhi\""}
+	userContext.(map[string]int)["count"]++
+	fmt.Println(bytes)
 	return nil
 }
 
@@ -79,5 +77,5 @@ func main() {
 		}
 	}*/
 	context := map[string]int{"count": 0}
-	err = g.AllDocsMapReduce("", "", allDocumentsCallback, context, w, 1000)
+	err = g.AllDocsMapReduce("", "", allDocumentsCallback, context, w, 10)
 }

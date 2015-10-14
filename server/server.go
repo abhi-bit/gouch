@@ -1,7 +1,6 @@
 package main
 
 import (
-	"encoding/json"
 	"fmt"
 	"io"
 	"log"
@@ -15,14 +14,10 @@ import (
 
 var limit int
 
-func allDocumentsCallback(g *gouch.Gouch, docInfo *gouch.DocumentInfo, userContext interface{}, w io.Writer, limit int) error {
-	bytes, err := json.Marshal(docInfo)
-	if err != nil {
-		fmt.Println(err)
-	} else {
-		userContext.(map[string]int)["count"]++
-		fmt.Fprintf(w, string(bytes)+",\n")
-	}
+func allDocumentsCallback(g *gouch.Gouch, docInfo *gouch.DocumentInfo, userContext interface{}, w io.Writer) error {
+	bytes := "{\"id\":\"" + docInfo.ID + "\",\"key\":" + docInfo.Key + ",\"value\":" + docInfo.Value + "},"
+	userContext.(map[string]int)["count"]++
+	fmt.Fprintf(w, string(bytes)+",\n")
 	return nil
 }
 
