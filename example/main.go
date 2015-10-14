@@ -75,6 +75,11 @@ func main() {
 			fmt.Println(resi)
 		}
 	}*/
+
+	f, _ := os.Create("mprof")
+	pprof.WriteHeapProfile(f)
+	f.Close()
+
 	context := map[string]int{"count": 0}
 	err = g.AllDocsMapReduce("", "", allDocumentsCallback, context, w, 10)
 }
