@@ -185,9 +185,6 @@ func (g *Gouch) WalkIDTree(startID, endID string, wtcb WalkTreeCallback, userCon
 //AllDocsMapReduce MapReduce tree dump
 func (g *Gouch) AllDocsMapReduce(startID, endID string, mapR DocumentInfoCallback, userContext interface{}, w io.Writer, limit int) error {
 
-	s = newSlicePool(func() []byte { return make([]byte, 4) })
-	//p = newSlicePool(func() []byte { return make([]byte, 2) })
-
 	mapRCallback := func(gouch *Gouch, depth int, documentInfo *DocumentInfo, key []byte, subTreeSize uint64, reducedValue []byte, userContext interface{}) error {
 		if documentInfo != nil {
 			return mapR(gouch, documentInfo, userContext, w)

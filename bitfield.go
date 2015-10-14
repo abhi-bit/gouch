@@ -60,14 +60,13 @@ func decodeRaw08(raw []byte) uint8 {
 
 func decodeRaw16(raw []byte) uint16 {
 	var rv uint16
-	//buf := bytes.NewBuffer(raw)
-	//binary.Read(buf, binary.BigEndian, &rv)
 
-	p = newSlicePool(func() []byte { return make([]byte, 2) })
-	b := p.getBytes()
-	copy(b, raw)
-	rv = binary.BigEndian.Uint16(b)
-
+	//Using sync.Pool
+	if b, ok := twoByte.Get().([]byte); ok {
+		copy(b, raw)
+		rv = binary.BigEndian.Uint16(b)
+		twoByte.Put(b)
+	}
 	return rv
 }
 
@@ -153,33 +152,28 @@ func decodeRaw12_28Split(data []byte) (top uint32, bottom uint32) {
 	SecondByteBottom := (data[1] & 0xf0) >> 4
 	SecondByte := SecondByteTop | SecondByteBottom
 
-	/*buf := bytes.NewBuffer([]byte{0x00, 0x00, FirstByte, SecondByte})
-	binary.Read(buf, binary.BigEndian, &top)
-	buf = bytes.NewBuffer([]byte{data[1] & 0x0f})
-	buf.Write(data[2:])
-	binary.Read(buf, binary.BigEndian, &bottom)*/
-
 	//Using sync.Pool
-	b := s.getBytes()
+	if b, ok := fourByte.Get().([]byte); ok {
+		b[0] = 0x00
+		b[1] = 0x00
+		b[2] = FirstByte
+		b[3] = SecondByte
 
-	b[0] = 0x00
-	b[1] = 0x00
-	b[2] = FirstByte
-	b[3] = SecondByte
+		top = binary.BigEndian.Uint32(b)
 
-	top = binary.BigEndian.Uint32(b)
-
-	s.putBytes(b)
-
-	c := s.getBytes()
-	c[0] = data[1] & 0x0f
-	k := 1
-	for _, v := range data[2:] {
-		c[k] = v
-		k++
+		fourByte.Put(b)
 	}
-	bottom = binary.BigEndian.Uint32(c)
-	s.putBytes(c)
+
+	if b, ok := fourByte.Get().([]byte); ok {
+		b[0] = data[1] & 0x0f
+		k := 1
+		for _, v := range data[2:] {
+			b[k] = v
+			k++
+		}
+		bottom = binary.BigEndian.Uint32(b)
+		fourByte.Put(b)
+	}
 
 	return
 }
