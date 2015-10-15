@@ -3,8 +3,18 @@ package gouch
 import (
 	"os"
 
+	//CGO implementation of snappy
+	_ "github.com/cockroachdb/c-snappy"
+
+	//golang implementation of snappy
 	"github.com/golang/snappy"
 )
+
+// #cgo CXXFLAGS: -std=c++11
+// #cgo CPPFLAGS: -I c-snappy
+// #cgo darwin LDFLAGS: -Wl,-undefined -Wl,dynamic_lookup
+// #cgo !darwin LDFLAGS: -Wl,-unresolved-symbols=ignore-all
+import "C"
 
 //BaseOps struct for doing file operations
 type BaseOps struct{}
