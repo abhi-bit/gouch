@@ -1,9 +1,5 @@
 package gouch
 
-import (
-//	"fmt"
-)
-
 type lookupContext struct {
 	gouch                *Gouch
 	documentInfoCallback DocumentInfoCallback

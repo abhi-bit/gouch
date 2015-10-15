@@ -1,7 +1,6 @@
 package main
 
 import (
-	//"encoding/json"
 	"flag"
 	"fmt"
 	"io"
@@ -16,7 +15,7 @@ import (
 var cpuprofile = flag.String("cpuprofile", "", "write cpu profile to a file")
 
 func allDocumentsCallback(g *gouch.Gouch, docInfo *gouch.DocumentInfo, userContext interface{}, w io.Writer) error {
-	//bytes, err := json.Marshal(docInfo)
+	// JSON encode manually
 	bytes := "{\"id\":\"" + string(docInfo.ID) + "\",\"key\":" + string(docInfo.Key) + ",\"value\":" + string(docInfo.Value) + "},"
 	userContext.(map[string]int)["count"]++
 	fmt.Println(bytes)
@@ -71,8 +70,9 @@ func main() {
 
 	for i := 0; i < 100; i++ {
 		select {
-		case resi := <-res:
-			fmt.Println(resi)
+		case _ = <-res:
+			continue
+			//fmt.Println(resi)
 		}
 	}*/
 

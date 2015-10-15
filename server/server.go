@@ -6,6 +6,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"runtime"
 	"strconv"
 	"time"
 
@@ -64,6 +65,8 @@ func runQuery(w http.ResponseWriter, r *http.Request) {
 }
 
 func main() {
+
+	runtime.GOMAXPROCS(runtime.NumCPU())
 
 	http.HandleFunc("/query", runQuery)
 	fmt.Println("Starting query prototype on port 8093")

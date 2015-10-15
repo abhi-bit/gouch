@@ -72,39 +72,26 @@ func lookupCallback(req *lookupRequest, key []byte, value []byte) error {
 
 	context := req.callbackContext.(*lookupContext)
 
-	var docinfo DocumentInfo
+	docinfo := DocumentInfo{}
 
-	// Using sync.Pool
-	if d, ok := documentInfoPool.Get().(DocumentInfo); ok {
+	if context.indexType == IndexTypeByID || context.indexType == IndexTypeMapR {
+		sz := decodeRaw16(key[:2])
 
-		if context.indexType == IndexTypeByID || context.indexType == IndexTypeMapR {
-			sz := decodeRaw16(key[:2])
-
-			//detect key type i.e. either string or composite key
-			//composite keys
-			if string(key[len(key)-int(sz)-1]) == "]" {
-				docinfo.ID = key[len(key)-int(sz):]
-				docinfo.Key = key[2 : len(key)-int(sz)]
-				docinfo.Value = value[5:]
-			} else {
-				docinfo.ID = key[len(key)-int(sz)+2:]
-				docinfo.Key = key[2 : len(key)-int(sz)+2]
-				docinfo.Value = value[5:]
-			}
-		}
-
-		if context.walkTreeCallback != nil {
-			if context.indexType == IndexTypeLocalDocs {
-				// note we pass the non-initialized docinfo so we can at least detect that its a leaf
-				return context.walkTreeCallback(context.gouch, context.depth, &docinfo, key, 0, value, context.callbackContext)
-			}
-			return context.walkTreeCallback(context.gouch, context.depth, &docinfo, nil, 0, nil, context.callbackContext)
-		} /*else if context.documentInfoCallback != nil {
-			return context.documentInfoCallback(context.gouch, &docinfo, context.callbackContext)
-		}*/
-
-		documentInfoPool.Put(d)
+		docinfo.ID = key[int(sz)+2:]
+		docinfo.Key = key[2 : int(sz)+2]
+		docinfo.Value = value[5:]
 	}
+
+	if context.walkTreeCallback != nil {
+		if context.indexType == IndexTypeLocalDocs {
+			// note we pass the non-initialized docinfo so we can at least detect that its a leaf
+			return context.walkTreeCallback(context.gouch, context.depth, &docinfo, key, 0, value, context.callbackContext)
+		}
+		return context.walkTreeCallback(context.gouch, context.depth, &docinfo, nil, 0, nil, context.callbackContext)
+	} /*else if context.documentInfoCallback != nil {
+		return context.documentInfoCallback(context.gouch, &docinfo, context.callbackContext)
+	}*/
+
 	return nil
 }
 
