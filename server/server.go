@@ -7,7 +7,7 @@ import (
 	"net/http"
 	_ "net/http/pprof"
 	"os"
-	"runtime"
+	//"runtime"
 	"strconv"
 	"time"
 
@@ -15,6 +15,7 @@ import (
 )
 
 var limit int
+var indexFileInfo *gouch.Gouch
 
 func allDocumentsCallback(g *gouch.Gouch, docInfo *gouch.DocumentInfo, userContext interface{}, w io.Writer) error {
 	bytes := "{\"id\":\"" + string(docInfo.ID) + "\",\"key\":" +
@@ -54,8 +55,12 @@ func runQuery(w http.ResponseWriter, r *http.Request) {
 	context := map[string]int{"count": 0}
 
 	now := time.Now()
-	g, _ := gouch.Open("/tmp/1M_pymc_index", os.O_RDONLY)
-	//g, _ := gouch.Open("/Users/asingh/repo/go/src/github.com/abhi-bit/gouch/example/1M_pymc_index", os.O_RDONLY)
+	var g *gouch.Gouch
+	if indexFileInfo == nil {
+		g, _ = gouch.Open("/tmp/1M_pymc_index", os.O_RDONLY)
+	} else {
+		g = indexFileInfo
+	}
 	err := g.AllDocsMapReduce(startKey, endKey, allDocumentsCallback, context, w, limit)
 	if err != nil {
 		fmt.Printf("Failed tree traversal\n")
@@ -67,7 +72,7 @@ func runQuery(w http.ResponseWriter, r *http.Request) {
 
 func main() {
 
-	runtime.GOMAXPROCS(runtime.NumCPU())
+	//runtime.GOMAXPROCS(runtime.NumCPU())
 
 	http.HandleFunc("/query", runQuery)
 	fmt.Println("Starting query prototype on port 8093")
