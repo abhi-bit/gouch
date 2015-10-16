@@ -12,19 +12,24 @@ const ChunkCRCSize int64 = 4
 
 // attempt to read a chunk at the specified location
 func (g *Gouch) readChunkAt(pos int64, header bool) ([]byte, error) {
+	var size uint32
+	var n int64
+	var err error
 	// chunk starts with 8 bytes (32bit length, 32bit crc)
-	chunkPrefix := make([]byte, ChunkLengthSize+ChunkCRCSize)
-	n, err := g.readAt(chunkPrefix, pos)
-	if err != nil {
-		return nil, err
-	}
-	if n < ChunkLengthSize+ChunkCRCSize {
-		return nil, nil
-	}
+	if chunkPrefix, ok := eightByte.Get().([]byte); ok {
 
-	size := decodeRaw31(chunkPrefix[0:ChunkLengthSize])
-	//crc := decodeRaw32(chunkPrefix[ChunkLengthSize : ChunkLengthSize+ChunkCRCSize])
+		n, err = g.readAt(chunkPrefix, pos)
+		if err != nil {
+			return nil, err
+		}
+		if n < ChunkLengthSize+ChunkCRCSize {
+			return nil, nil
+		}
 
+		size = decodeRaw31(chunkPrefix[0:ChunkLengthSize])
+		//crc := decodeRaw32(chunkPrefix[ChunkLengthSize : ChunkLengthSize+ChunkCRCSize])
+
+	}
 	// size should at least be the size of the length field + 1 (for headers)
 	if header && size < uint32(ChunkLengthSize+1) {
 		return nil, nil
