@@ -73,40 +73,70 @@ func decodeRaw16(raw []byte) uint16 {
 // just like raw32 but mask out the top bit
 func decodeRaw31(raw []byte) uint32 {
 	var rv uint32
-	topByte := maskOutTopBit(raw[0])
-	buf := bytes.NewBuffer([]byte{topByte})
-	buf.Write(raw[1:4])
-	binary.Read(buf, binary.BigEndian, &rv)
+	if b, ok := fourByte.Get().([]byte); ok {
+		topByte := maskOutTopBit(raw[0])
+		b[0] = topByte
+		k := 1
+		for _, v := range raw[1:4] {
+			b[k] = v
+			k++
+		}
+		rv = binary.BigEndian.Uint32(b)
+		fourByte.Put(b)
+	}
 	return rv
 }
 
 func decodeRaw32(raw []byte) uint32 {
 	var rv uint32
-	buf := bytes.NewBuffer(raw)
-	binary.Read(buf, binary.BigEndian, &rv)
+	if b, ok := fourByte.Get().([]byte); ok {
+		copy(b, raw)
+		rv = binary.BigEndian.Uint32(b)
+		fourByte.Put(b)
+	}
 	return rv
 }
 
 func decodeRaw40(raw []byte) uint64 {
 	var rv uint64
-	buf := bytes.NewBuffer([]byte{0, 0, 0})
-	buf.Write(raw)
-	binary.Read(buf, binary.BigEndian, &rv)
+	if b, ok := eightByte.Get().([]byte); ok {
+		b[0] = 0x00
+		b[1] = 0x00
+		b[2] = 0x00
+		k := 3
+		for _, v := range raw[0:5] {
+			b[k] = v
+			k++
+		}
+		rv = binary.BigEndian.Uint64(b)
+		eightByte.Put(b)
+	}
 	return rv
 }
 
 func decodeRaw48(raw []byte) uint64 {
 	var rv uint64
-	buf := bytes.NewBuffer([]byte{0, 0})
-	buf.Write(raw)
-	binary.Read(buf, binary.BigEndian, &rv)
+	if b, ok := eightByte.Get().([]byte); ok {
+		b[0] = 0x00
+		b[1] = 0x00
+		k := 2
+		for _, v := range raw[:6] {
+			b[k] = v
+			k++
+		}
+		rv = binary.BigEndian.Uint64(b)
+		eightByte.Put(b)
+	}
 	return rv
 }
 
 func decodeRaw64(raw []byte) uint64 {
 	var rv uint64
-	buf := bytes.NewBuffer(raw)
-	binary.Read(buf, binary.BigEndian, &rv)
+	if b, ok := eightByte.Get().([]byte); ok {
+		copy(b, raw)
+		rv = binary.BigEndian.Uint64(b)
+		eightByte.Put(b)
+	}
 	return rv
 }
 

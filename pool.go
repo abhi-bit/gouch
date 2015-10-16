@@ -15,8 +15,8 @@ var fourByte = &sync.Pool{
 	},
 }
 
-var documentInfoPool = &sync.Pool{
+var eightByte = &sync.Pool{
 	New: func() interface{} {
-		return DocumentInfo{}
+		return make([]byte, 8)
 	},
 }
