@@ -22,9 +22,13 @@ func initIndexFileInfo() {
 
 func allDocumentsCallback(g *gouch.Gouch, docInfo *gouch.DocumentInfo, userContext interface{}, w io.Writer) error {
 	bytes := "{\"id\":\"" + string(docInfo.ID) + "\",\"key\":" +
-		string(docInfo.Key) + ",\"value\":" + string(docInfo.Value) + "},"
+		string(docInfo.Key) + ",\"value\":" + string(docInfo.Value) + "}"
 	userContext.(map[string]int)["count"]++
+
+	flusher, _ := w.(http.Flusher)
 	fmt.Fprintf(w, string(bytes)+",\n")
+	flusher.Flush()
+
 	return nil
 }
 

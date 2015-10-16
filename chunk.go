@@ -28,7 +28,7 @@ func (g *Gouch) readChunkAt(pos int64, header bool) ([]byte, error) {
 
 		size = decodeRaw31(chunkPrefix[0:ChunkLengthSize])
 		//crc := decodeRaw32(chunkPrefix[ChunkLengthSize : ChunkLengthSize+ChunkCRCSize])
-
+		eightByte.Put(chunkPrefix)
 	}
 	// size should at least be the size of the length field + 1 (for headers)
 	if header && size < uint32(ChunkLengthSize+1) {
