@@ -202,6 +202,5 @@ func DecodeIndexHeader(bytes []byte) *IndexHeader {
 		}
 		sort.Sort(h.partVersions)
 	}
-	//fmt.Printf("Header dump: %+v\n", h)
 	return &h
 }

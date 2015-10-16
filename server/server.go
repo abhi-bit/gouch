@@ -14,8 +14,11 @@ import (
 	"github.com/abhi-bit/gouch"
 )
 
-var limit int
 var indexFileInfo *gouch.Gouch
+
+func initIndexFileInfo() {
+	indexFileInfo = &gouch.Gouch{FDAllocated: false}
+}
 
 func allDocumentsCallback(g *gouch.Gouch, docInfo *gouch.DocumentInfo, userContext interface{}, w io.Writer) error {
 	bytes := "{\"id\":\"" + string(docInfo.ID) + "\",\"key\":" +
@@ -50,29 +53,31 @@ func runQuery(w http.ResponseWriter, r *http.Request) {
 		endKey = end[0]
 	}
 
-	//fmt.Printf("startKey: %s endKey: %s limit: %d\n", startKey, endKey, limit)
-
 	context := map[string]int{"count": 0}
 
 	now := time.Now()
 	var g *gouch.Gouch
-	if indexFileInfo == nil {
+	if indexFileInfo.GetFDStatus() == false {
 		g, _ = gouch.Open("/tmp/1M_pymc_index", os.O_RDONLY)
+		indexFileInfo = g.DeepCopy()
+		indexFileInfo.SetStatus()
 	} else {
-		g = indexFileInfo
+		g = indexFileInfo.DeepCopy()
 	}
-	err := g.AllDocsMapReduce(startKey, endKey, allDocumentsCallback, context, w, limit)
+
+	err := indexFileInfo.AllDocsMapReduce(startKey, endKey, allDocumentsCallback, context, w, limit)
 	if err != nil {
 		fmt.Printf("Failed tree traversal\n")
 	}
-	g.Close()
+	//Not closing FD so that we could reuse it
+	//indexFileInfo.Close()
 	fmt.Fprintf(w, "Time elapsed: %v\n", time.Since(now))
-
 }
 
 func main() {
 
 	//runtime.GOMAXPROCS(runtime.NumCPU())
+	initIndexFileInfo()
 
 	http.HandleFunc("/query", runQuery)
 	fmt.Println("Starting query prototype on port 8093")
