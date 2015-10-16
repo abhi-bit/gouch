@@ -5,6 +5,7 @@ import (
 	"io"
 	"log"
 	"net/http"
+	_ "net/http/pprof"
 	"os"
 	"runtime"
 	"strconv"
@@ -53,7 +54,7 @@ func runQuery(w http.ResponseWriter, r *http.Request) {
 	context := map[string]int{"count": 0}
 
 	now := time.Now()
-	g, _ := gouch.Open("/Users/asingh/repo/go/src/github.com/abhi-bit/gouch/example/abhi_pymc_index", os.O_RDONLY)
+	g, _ := gouch.Open("/tmp/1M_pymc_index", os.O_RDONLY)
 	//g, _ := gouch.Open("/Users/asingh/repo/go/src/github.com/abhi-bit/gouch/example/1M_pymc_index", os.O_RDONLY)
 	err := g.AllDocsMapReduce(startKey, endKey, allDocumentsCallback, context, w, limit)
 	if err != nil {
@@ -70,7 +71,7 @@ func main() {
 
 	http.HandleFunc("/query", runQuery)
 	fmt.Println("Starting query prototype on port 8093")
-	if err := http.ListenAndServe(":8093", nil); err != nil {
+	if err := http.ListenAndServe(":9093", nil); err != nil {
 		log.Fatal(err)
 	}
 }
