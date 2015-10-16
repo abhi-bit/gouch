@@ -4,14 +4,11 @@ import (
 	"os"
 
 	//CGO implementation of snappy
-	_ "github.com/cockroachdb/c-snappy"
-
-	//golang implementation of snappy
-	"github.com/golang/snappy"
+	"github.com/cockroachdb/c-snappy"
 )
 
 // #cgo CXXFLAGS: -std=c++11
-// #cgo CPPFLAGS: -I c-snappy
+// #cgo CPPFLAGS: -I ../../cockroachdb/c-snappy/internal
 // #cgo darwin LDFLAGS: -Wl,-undefined -Wl,dynamic_lookup
 // #cgo !darwin LDFLAGS: -Wl,-unresolved-symbols=ignore-all
 import "C"
@@ -55,7 +52,7 @@ func (b *BaseOps) Close(f *os.File) error {
 }
 
 //SnappyEncode encodes source byte array using snappy
-func SnappyEncode(dst, src []byte) []byte {
+func SnappyEncode(dst, src []byte) ([]byte, error) {
 	return snappy.Encode(dst, src)
 }
 
