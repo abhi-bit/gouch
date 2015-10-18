@@ -17,7 +17,7 @@ type nodePointerList []*nodePointer
 //IndexHeader main header of index file
 type IndexHeader struct {
 	version            uint8
-	signature          []byte
+	signature          [16]byte
 	numViews           uint8
 	numPartitions      uint16
 	activeBitmask      *Bitmap
@@ -76,7 +76,9 @@ func DecodeIndexHeader(bytes []byte) *IndexHeader {
 
 	h := IndexHeader{}
 
-	h.signature = bytes[0:15]
+	for k, v := range bytes[0:16] {
+		h.signature[k] = v
+	}
 	h.version = decodeRaw08(data[arrayIndex : arrayIndex+1])
 	arrayIndex++
 	h.numPartitions = decodeRaw16(data[arrayIndex : arrayIndex+2])

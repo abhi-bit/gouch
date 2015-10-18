@@ -9,11 +9,11 @@ import (
 
 //Gouch handler for reading a index file
 type Gouch struct {
-	file        *os.File
-	pos         int64
-	header      *IndexHeader
-	ops         Ops
-	FDAllocated bool
+	file          *os.File
+	pos           int64
+	header        *IndexHeader
+	ops           Ops
+	isFDAllocated bool
 }
 
 //DocumentInfo Handler for capturing metadata
@@ -23,19 +23,19 @@ type DocumentInfo struct {
 	Value []byte `json:"value"` // emitted value
 }
 
-//GetStatus provides status of header FD
+//GetFDStatus provides status of header FD
 func (g *Gouch) GetFDStatus() bool {
-	return g.FDAllocated
+	return g.isFDAllocated
 }
 
 //SetStatus assists in caching index header location
-func (g *Gouch) SetStatus() {
-	g.FDAllocated = true
+func (g *Gouch) SetStatus(state bool) {
+	g.isFDAllocated = state
 }
 
 //DeepCopy copies one gouch struct into another
 func (g *Gouch) DeepCopy() *Gouch {
-	rv := &Gouch{g.file, g.pos, g.header, g.ops, g.FDAllocated}
+	rv := &Gouch{g.file, g.pos, g.header, g.ops, g.isFDAllocated}
 	return rv
 }
 

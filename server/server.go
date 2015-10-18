@@ -7,7 +7,6 @@ import (
 	"net/http"
 	_ "net/http/pprof"
 	"os"
-	//"runtime"
 	"strconv"
 	"time"
 
@@ -15,10 +14,6 @@ import (
 )
 
 var indexFileInfo *gouch.Gouch
-
-func initIndexFileInfo() {
-	indexFileInfo = &gouch.Gouch{FDAllocated: false}
-}
 
 func allDocumentsCallback(g *gouch.Gouch, docInfo *gouch.DocumentInfo, userContext interface{}, w io.Writer) error {
 	bytes := "{\"id\":\"" + string(docInfo.ID) + "\",\"key\":" +
@@ -64,7 +59,7 @@ func runQuery(w http.ResponseWriter, r *http.Request) {
 	if indexFileInfo.GetFDStatus() == false {
 		g, _ = gouch.Open("/tmp/1M_pymc_index", os.O_RDONLY)
 		indexFileInfo = g.DeepCopy()
-		indexFileInfo.SetStatus()
+		indexFileInfo.SetStatus(true)
 	} else {
 		g = indexFileInfo.DeepCopy()
 	}
@@ -80,11 +75,11 @@ func runQuery(w http.ResponseWriter, r *http.Request) {
 
 func main() {
 
-	//runtime.GOMAXPROCS(runtime.NumCPU())
-	initIndexFileInfo()
+	indexFileInfo = &gouch.Gouch{}
+	indexFileInfo.SetStatus(false)
 
 	http.HandleFunc("/query", runQuery)
-	fmt.Println("Starting query prototype on port 8093")
+	fmt.Println("Starting query prototype on port 9093")
 	if err := http.ListenAndServe(":9093", nil); err != nil {
 		log.Fatal(err)
 	}
