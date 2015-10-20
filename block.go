@@ -44,10 +44,10 @@ func (g *Gouch) seekLastHeaderBlockFrom(pos int64) (int64, error) {
 	return pos, nil
 }
 
-func (g *Gouch) readAt(buf []byte, pos int64) (int64, error) {
+func (g *Gouch) readAt(buf []byte, size int64, pos int64) (int64, error) {
 	bytesReadSoFar := int64(0)
 	bytesSkipped := int64(0)
-	numBytesToRead := int64(len(buf))
+	numBytesToRead := int64(size)
 	readOffset := pos
 	for numBytesToRead > 0 {
 		var err error

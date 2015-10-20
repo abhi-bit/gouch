@@ -53,11 +53,11 @@ func (g *Gouch) findLastHeader() error {
 }
 
 func (g *Gouch) readHeaderAt(pos int64) (*IndexHeader, error) {
-	chunk, err := g.readChunkAt(pos, true)
+	chunk, size, err := g.readChunkAt(pos, true)
 	if err != nil {
 		return nil, err
 	}
-	header := DecodeIndexHeader(chunk)
+	header := DecodeIndexHeader(chunk[:size])
 	return header, nil
 }
 

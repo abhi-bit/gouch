@@ -121,7 +121,9 @@ func (g *Gouch) btreeLookupInner(req *lookupRequest, diskPos uint64, current, en
 			return nil
 		}
 	}
-
+	if len(nodeData) == SnappyDecodeBufLen {
+		snappyDecodeChunk.Put(nodeData)
+	}
 	//Any remaining items are not found.
 	for current < end && !req.fold {
 		err = req.fetchCallback(req, req.keys[current], nil)

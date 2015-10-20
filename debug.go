@@ -14,14 +14,14 @@ func (g *Gouch) DebugAddress(w io.Writer, offsetAddress int64, printRawBytes, re
 	if offsetAddress%4096 == 0 {
 		fmt.Fprintln(w, "Address is on a 4096 byte boundary...")
 		first := make([]byte, 1)
-		_, err := g.readAt(first, offsetAddress)
+		_, err := g.readAt(first, 1, offsetAddress)
 		if err != nil {
 			return err
 		}
 		fmt.Fprintf(w, "first:%+v\n", first)
 		if first[0] == 0 {
 			fmt.Fprintln(w, "Appears to be a header...")
-			chunk, err := g.readChunkAt(offsetAddress, true)
+			chunk, _, err := g.readChunkAt(offsetAddress, true)
 			if err != nil {
 				return err
 			}
@@ -41,7 +41,7 @@ func (g *Gouch) DebugAddress(w io.Writer, offsetAddress int64, printRawBytes, re
 	} else {
 		fmt.Fprintln(w, "Trying to read compressed chunk...")
 		more := make([]byte, 8)
-		g.readAt(more, offsetAddress)
+		g.readAt(more, 8, offsetAddress)
 		chunkSize := decodeRaw31(more[0:4])
 		if chunkSize > 4096 && !readLargeChunk {
 			return fmt.Errorf("Chunk appears to be too large (%d), check the address or use --readLargeChunk to proceed\n", chunkSize)

@@ -11,19 +11,19 @@ const ChunkLengthSize int64 = 4
 const ChunkCRCSize int64 = 4
 
 // attempt to read a chunk at the specified location
-func (g *Gouch) readChunkAt(pos int64, header bool) ([]byte, error) {
+func (g *Gouch) readChunkAt(pos int64, header bool) ([]byte, int64, error) {
 	var size uint32
 	var n int64
 	var err error
 	// chunk starts with 8 bytes (32bit length, 32bit crc)
 	if chunkPrefix, ok := eightByte.Get().([]byte); ok {
 
-		n, err = g.readAt(chunkPrefix, pos)
+		n, err = g.readAt(chunkPrefix, 8, pos)
 		if err != nil {
-			return nil, err
+			return nil, int64(size), err
 		}
 		if n < ChunkLengthSize+ChunkCRCSize {
-			return nil, nil
+			return nil, int64(size), nil
 		}
 
 		size = decodeRaw31(chunkPrefix[0:ChunkLengthSize])
@@ -32,17 +32,22 @@ func (g *Gouch) readChunkAt(pos int64, header bool) ([]byte, error) {
 	}
 	// size should at least be the size of the length field + 1 (for headers)
 	if header && size < uint32(ChunkLengthSize+1) {
-		return nil, nil
+		return nil, int64(size), nil
 	}
 	if header {
 		size -= uint32(ChunkLengthSize) // headers include the length of the hash, data does not
 	}
 
-	data := make([]byte, size)
-	pos += n // skip the actual number of bytes read for the header (may be more than header size if we crossed a block boundary)
-	n, err = g.readAt(data, pos)
-	if uint32(n) < size {
-		return nil, nil
+	var data []byte
+	var ok bool
+	if data, ok = snappyDecodeChunk.Get().([]byte); ok {
+		// skip the actual number of bytes read for the header (may be more than
+		// header size if we crossed a block boundary)
+		pos += n
+		n, err = g.readAt(data, int64(size), pos)
+		if uint32(n) < size {
+			return nil, int64(size), nil
+		}
 	}
 
 	// validate crc
@@ -51,18 +56,26 @@ func (g *Gouch) readChunkAt(pos int64, header bool) ([]byte, error) {
 		return nil, nil
 	}*/
 
-	return data, nil
+	return data, int64(size), nil
 }
 
 func (g *Gouch) readCompressedDataChunkAt(pos int64) ([]byte, error) {
-	chunk, err := g.readChunkAt(pos, false)
+	chunk, size, err := g.readChunkAt(pos, false)
 	if err != nil {
 		return nil, err
 	}
+	if len(chunk) == SnappyDecodeBufLen {
+		snappyDecodeChunk.Put(chunk)
+	}
 
-	decompressedChunk, err := SnappyDecode(nil, chunk)
-	if err != nil {
-		return nil, err
+	var decompressedChunk []byte
+	var ok bool
+
+	if decompressedChunk, ok = snappyDecodeChunk.Get().([]byte); ok {
+		decompressedChunk, err = SnappyDecode(nil, chunk[:size])
+		if err != nil {
+			return nil, err
+		}
 	}
 	return decompressedChunk, nil
 }
