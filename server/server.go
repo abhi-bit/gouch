@@ -1,7 +1,6 @@
 package main
 
 import (
-	"bytes"
 	"fmt"
 	"io"
 	"log"
@@ -16,33 +15,16 @@ import (
 
 var indexFileInfo *gouch.Gouch
 
-type cache struct {
-	channel chan string
-	pos     int
-	//cacheSize controls the cache size before read rows are written to the socket
-	cacheSize int
-}
-
 var flusher http.Flusher
-var c cache
 
 func allDocumentsCallback(g *gouch.Gouch, docInfo *gouch.DocumentInfo, userContext interface{}, w io.Writer) error {
 	row := "{\"id\":\"" + string(docInfo.ID) + "\",\"key\":" +
 		string(docInfo.Key) + ",\"value\":" + string(docInfo.Value) + "}"
 	userContext.(map[string]int)["count"]++
 
-	c.channel <- string(row) + ",\n"
-	c.pos++
-	if c.pos == c.cacheSize {
-		var buffer bytes.Buffer
-		for i := 0; i < c.cacheSize; i++ {
-			buffer.WriteString(<-c.channel)
-		}
-		c.pos = 0
-		flusher, _ := w.(http.Flusher)
-		fmt.Fprintf(w, buffer.String())
-		flusher.Flush()
-	}
+	flusher, _ := w.(http.Flusher)
+	fmt.Fprintf(w, string(row)+",\n")
+	flusher.Flush()
 
 	return nil
 }
@@ -74,14 +56,6 @@ func runQuery(w http.ResponseWriter, r *http.Request) {
 
 	context := map[string]int{"count": 0}
 
-	//Chunk in batches
-	if limit > 20 {
-		c.cacheSize = 20
-	} else {
-		c.cacheSize = limit
-	}
-	c.channel = make(chan string, c.cacheSize)
-
 	now := time.Now()
 	var g *gouch.Gouch
 	if indexFileInfo.GetFDStatus() == false {
@@ -105,8 +79,6 @@ func main() {
 
 	indexFileInfo = &gouch.Gouch{}
 	indexFileInfo.SetStatus(false)
-
-	c = cache{pos: 0}
 
 	http.HandleFunc("/query", runQuery)
 	fmt.Println("Starting query prototype on port 9093")
