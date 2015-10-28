@@ -1,6 +1,7 @@
 package main
 
 import (
+	"flag"
 	"fmt"
 	"io"
 	"log"
@@ -8,14 +9,24 @@ import (
 	_ "net/http/pprof"
 	"os"
 	"strconv"
-	"time"
 
 	"github.com/abhi-bit/gouch"
 )
 
 var indexFileInfo *gouch.Gouch
-
+var port int
 var flusher http.Flusher
+
+func init() {
+	flag.IntVar(&port, "port", 9093, "Port to listen. Default is 9093")
+	flag.Parse()
+}
+
+func healthCheck(w http.ResponseWriter, req *http.Request) {
+	w.Header().Set("Content-Type", "application/json; charset=utf-8")
+	w.WriteHeader(200)
+	fmt.Fprint(w, 1)
+}
 
 func allDocumentsCallback(g *gouch.Gouch, docInfo *gouch.DocumentInfo, userContext interface{}, w io.Writer) error {
 	row := "{\"id\":\"" + string(docInfo.ID) + "\",\"key\":" +
@@ -23,7 +34,7 @@ func allDocumentsCallback(g *gouch.Gouch, docInfo *gouch.DocumentInfo, userConte
 	userContext.(map[string]int)["count"]++
 
 	flusher, _ := w.(http.Flusher)
-	fmt.Fprintf(w, string(row)+",\n")
+	fmt.Fprintf(w, string(row)+"\n")
 	flusher.Flush()
 
 	return nil
@@ -56,7 +67,7 @@ func runQuery(w http.ResponseWriter, r *http.Request) {
 
 	context := map[string]int{"count": 0}
 
-	now := time.Now()
+	//now := time.Now()
 	var g *gouch.Gouch
 	if indexFileInfo.GetFDStatus() == false {
 		g, _ = gouch.Open("/tmp/1M_pymc_index", os.O_RDONLY)
@@ -72,7 +83,7 @@ func runQuery(w http.ResponseWriter, r *http.Request) {
 	}
 	//Not closing FD so that we could reuse it
 	//indexFileInfo.Close()
-	fmt.Fprintf(w, "Time elapsed: %v\n", time.Since(now))
+	//fmt.Fprintf(w, "Time elapsed: %v\n", time.Since(now))
 }
 
 func main() {
@@ -80,9 +91,10 @@ func main() {
 	indexFileInfo = &gouch.Gouch{}
 	indexFileInfo.SetStatus(false)
 
+	http.HandleFunc("/", healthCheck)
 	http.HandleFunc("/query", runQuery)
-	fmt.Println("Starting query prototype on port 9093")
-	if err := http.ListenAndServe(":9093", nil); err != nil {
+	fmt.Printf("Starting query prototype on port %d\n", port)
+	if err := http.ListenAndServe(":"+strconv.Itoa(port), nil); err != nil {
 		log.Fatal(err)
 	}
 }
