@@ -7,15 +7,15 @@
 
 char *randstring(size_t length)
 {
-
     static char charset[] = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789,.-#'?!";
     char *randomString = NULL;
+    int n;
 
     if (length) {
         randomString = malloc(sizeof(char) * (length +1));
 
         if (randomString) {
-            for (int n = 0;n < length;n++) {
+            for (n = 0;n < length;n++) {
                 int key = rand() % (int)(sizeof(charset) -1);
                 randomString[n] = charset[key];
             }
@@ -28,8 +28,9 @@ char *randstring(size_t length)
 sized_buf *mergeKArrays(minHeap *hp, node buf_arr[arr_count][count])
 {
     sized_buf *output = (sized_buf *)malloc(sizeof(sized_buf) * arr_count * count);
+    int i, j;
 
-    for (int i = 0; i < arr_count; i++) {
+    for (i = 0; i < arr_count; i++) {
         node *n = (node *)malloc(sizeof(node));
         n->data = buf_arr[i][0].data;
         n->i = i;
@@ -37,7 +38,7 @@ sized_buf *mergeKArrays(minHeap *hp, node buf_arr[arr_count][count])
         insertNode(hp, n);
     }
 
-    for (int j = 0; j < arr_count * count; j++) {
+    for (j = 0; j < arr_count * count; j++) {
         node *root = getMinNode(hp);
         output[j] = root->data;
 
@@ -60,9 +61,10 @@ int main()
 {
     node arr[arr_count][count];
     minHeap *hp = initMinHeap();
+    int i, j;
 
-    for (int i = 0; i < arr_count; i++) {
-        for (int j = 0; j < count; j++) {
+    for (i = 0; i < arr_count; i++) {
+        for (j = 0; j < count; j++) {
             node *n = (node *) malloc(sizeof(node));
             n->data.buf = randstring(20);
             n->data.size = 20;
@@ -75,7 +77,7 @@ int main()
     sized_buf *output = mergeKArrays(hp, arr);
 
     printf("\nArray Dump:\n");
-    for (int i = 0; i < arr_count * count; i++) {
+    for (i = 0; i < arr_count * count; i++) {
         printf("%.*s\n", (int) output[i].size, output[i].buf);
     }
 
