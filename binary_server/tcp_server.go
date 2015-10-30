@@ -29,7 +29,7 @@ func (w *work) DoWork(workRoutine int) {
 
 func main() {
 	runtime.GOMAXPROCS(runtime.NumCPU())
-	workPool := workpool.New(runtime.NumCPU(), 100)
+	workPool := workpool.New(runtime.NumCPU()*3, 1000)
 
 	ln, err := net.Listen("tcp", ":9091")
 	if err != nil {
