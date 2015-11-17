@@ -7,12 +7,12 @@ import (
 	"runtime"
 	"strings"
 
-	"github.com/goinggo/workpool"
+	"github.com/abhi-bit/gouch/jobpool"
 )
 
 type work struct {
 	conn net.Conn
-	wp   *workpool.WorkPool
+	wp   *pool.WorkPool
 }
 
 func (w *work) DoWork(workRoutine int) {
@@ -29,7 +29,8 @@ func (w *work) DoWork(workRoutine int) {
 
 func main() {
 	runtime.GOMAXPROCS(runtime.NumCPU())
-	workPool := workpool.New(runtime.NumCPU()*3, 1000)
+	//worker count and queue size can be customised
+	workPool := pool.New(runtime.NumCPU()*20, 1000000)
 
 	ln, err := net.Listen("tcp", ":9091")
 	if err != nil {
