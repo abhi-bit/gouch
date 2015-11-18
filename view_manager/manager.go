@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"runtime"
 	"strings"
+	"sync"
 	"time"
 )
 
@@ -21,6 +22,12 @@ var (
 	nodes   = make(map[string]nodeStatus)
 	port    int
 )
+
+var tr = &http.Transport{
+	MaxIdleConnsPerHost: 5000,
+}
+
+var client = &http.Client{Transport: tr}
 
 func init() {
 
@@ -57,7 +64,10 @@ func runQuery(w http.ResponseWriter, r *http.Request) {
 
 	resc, errc := make(chan string), make(chan error)
 
+	var wg sync.WaitGroup
+
 	for node := range nodes {
+		wg.Add(1)
 		go func(node string) {
 			url := node + path + "?" + query
 			data, err := fetch(url)
@@ -66,6 +76,7 @@ func runQuery(w http.ResponseWriter, r *http.Request) {
 				return
 			}
 			resc <- data
+			wg.Done()
 		}(node)
 	}
 
@@ -78,17 +89,19 @@ func runQuery(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
+	wg.Wait()
+
 	defer close(resc)
 	defer close(errc)
 }
 
 func fetch(url string) (string, error) {
-	resp, err := http.Get(url)
-	defer resp.Body.Close()
+	resp, err := client.Get(url)
 	if err != nil {
 		log.Printf("Sub-query call failed against %s: %+v\n", url, err)
 		return "", err
 	}
+	defer resp.Body.Close()
 	body, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
 		log.Printf("Failed to read response from %s: %+v\n", url, err)

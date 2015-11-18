@@ -2,6 +2,7 @@ package main
 
 import (
 	"bufio"
+	"flag"
 	"log"
 	"net"
 	"runtime"
@@ -14,6 +15,8 @@ type work struct {
 	conn net.Conn
 	wp   *pool.WorkPool
 }
+
+var multiplier = flag.Int("m", 10, "multipler for number of goroutines")
 
 func (w *work) DoWork(workRoutine int) {
 	m, _ := bufio.NewReader(w.conn).ReadString('\n')
@@ -28,9 +31,10 @@ func (w *work) DoWork(workRoutine int) {
 }
 
 func main() {
+	flag.Parse()
 	runtime.GOMAXPROCS(runtime.NumCPU())
 	//worker count and queue size can be customised
-	workPool := pool.New(runtime.NumCPU()*20, 1000000)
+	workPool := pool.New(runtime.NumCPU()**multiplier, 1000000)
 
 	ln, err := net.Listen("tcp", ":9091")
 	if err != nil {
