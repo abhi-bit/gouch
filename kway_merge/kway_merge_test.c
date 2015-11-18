@@ -3,7 +3,7 @@
 #include "min_heap.h"
 
 #define count 4
-#define arr_count 2
+#define arr_count 4
 
 char *randstring(size_t length)
 {
@@ -34,6 +34,7 @@ sized_buf *mergeKArrays(minHeap *hp, node buf_arr[arr_count][count])
         node *n = (node *)malloc(sizeof(node));
         n->data = buf_arr[i][0].data;
         n->i = i;
+        // j represents next element to be picked from the ith array
         n->j = 1;
         insertNode(hp, n);
     }
@@ -47,6 +48,8 @@ sized_buf *mergeKArrays(minHeap *hp, node buf_arr[arr_count][count])
             root->j += 1;
         } else {
             sized_buf data;
+            // Using "~" as marker, it being the last legible
+            // element in ascii table
             data.buf = "~";
             data.size = 2;
             root->data = data;
@@ -63,31 +66,27 @@ int main()
     minHeap *hp = initMinHeap();
     int i, j;
 
+    printf("Merging %d arrays each of size %d\n\n", arr_count, count);
+
     for (i = 0; i < arr_count; i++) {
         for (j = 0; j < count; j++) {
             node *n = (node *) malloc(sizeof(node));
+            // randstring() is bad choice, there isn't any ordering in
+            // consecutive generations
             n->data.buf = randstring(20);
             n->data.size = 20;
             arr[i][j] = *n;
-            printf("Inserted: ");
+            printf("INSERT> %d array: ", i);
             printf("%.*s\n", (int) n->data.size, n->data.buf);
         }
     }
 
     sized_buf *output = mergeKArrays(hp, arr);
 
-    printf("\nArray Dump:\n");
+    printf("\nK-Way merge dump>\n");
     for (i = 0; i < arr_count * count; i++) {
         printf("%.*s\n", (int) output[i].size, output[i].buf);
     }
-
-    printf("Deleting nodes: \n");
-    node *temp = getDeleteMinNode(hp);
-    printf("%.*s\n", (int) temp->data.size, temp->data.buf);
-    temp = getDeleteMinNode(hp);
-    printf("%.*s\n", (int) temp->data.size, temp->data.buf);
-    temp = getDeleteMinNode(hp);
-    printf("%.*s\n", (int) temp->data.size, temp->data.buf);
 
     free(hp);
     return 0;
