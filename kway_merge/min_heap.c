@@ -3,7 +3,13 @@
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
+#include "collate_json.h"
 #include "min_heap.h"
+
+typedef enum CollationMode {
+    Collate_Unicode,
+    Collate_Raw
+} CollationMode;
 
 minHeap* initMinHeap()
 {
@@ -19,14 +25,17 @@ void swap(node *n1, node *n2)
     *n2 = temp;
 }
 
-bool compare(sized_buf *buf1, sized_buf *buf2)
+bool compare(const sized_buf *buf1, const sized_buf *buf2, CollationMode mode)
 {
     size_t length = (buf1->size < buf2->size) ? buf1->size : buf2->size;
 
-    if (memcmp(buf1->buf, buf2->buf, length) < 0) {
-        return true;
+    if (mode == Collate_Unicode) {
+        int res = CollateJSON(buf1, buf2, kCollateJSON_Unicode);
+        if (res != 0) return true;
+        else return false;
     } else {
-        return false;
+        if (memcmp(buf1->buf, buf2->buf, length) < 0) return true;
+        else return false;
     }
 }
 
@@ -41,11 +50,11 @@ void printArray(sized_buf *arr[], int size)
 void heapify(minHeap *hp, int i)
 {
     int smallest = (LCHILD(i) < hp->size &&
-                    compare(&hp->elem[LCHILD(i)].data, &hp->elem[i].data))
+                    compare(&hp->elem[LCHILD(i)].data, &hp->elem[i].data, Collate_Unicode))
                     ? LCHILD(i) : i;
 
     if (RCHILD(i) < hp->size &&
-            compare(&hp->elem[RCHILD(i)].data, &hp->elem[smallest].data)) {
+            compare(&hp->elem[RCHILD(i)].data, &hp->elem[smallest].data, Collate_Unicode)) {
         smallest = RCHILD(i);
     }
 
@@ -88,7 +97,7 @@ void insertNode(minHeap *hp, node *data) {
     nd.j = data->j;
 
     int i = (hp->size)++;
-    while (i && compare(&nd.data, &hp->elem[PARENT(i)].data)) {
+    while (i && compare(&nd.data, &hp->elem[PARENT(i)].data, Collate_Unicode)) {
         hp->elem[i] = hp->elem[PARENT(i)];
         i = PARENT(i);
     }
@@ -131,7 +140,8 @@ node *getMaxNode(minHeap *hp, int i) {
     node *l = getMaxNode(hp, LCHILD(i));
     node *r = getMaxNode(hp, RCHILD(i));
 
-    if (compare(&(l->data), &(r->data))) {
+    if (compare((const sized_buf*)&(l->data), (const sized_buf*)&(r->data),
+                Collate_Unicode)) {
         return l;
     } else {
         return r;
