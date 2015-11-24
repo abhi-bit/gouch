@@ -37,4 +37,5 @@ void preorderTraversal(minHeap *hp, int i);
 void postorderTraversal(minHeap *hp, int i);
 void levelorderTraversal(minHeap *hp);
 void printArray(sized_buf *arr[], int size);
+int collate_JSON(char *b1, char *b2, int s1, int s2);
 #endif
