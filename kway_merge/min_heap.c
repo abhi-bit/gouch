@@ -25,17 +25,19 @@ void swap(node *n1, node *n2)
     *n2 = temp;
 }
 
-bool compare(const sized_buf *buf1, const sized_buf *buf2, CollationMode mode)
+static int compare(const sized_buf *buf1, const sized_buf *buf2, CollationMode mode)
 {
     size_t length = (buf1->size < buf2->size) ? buf1->size : buf2->size;
 
     if (mode == Collate_Unicode) {
-        int res = CollateJSON(buf1, buf2, kCollateJSON_Unicode);
-        if (res != 0) return true;
-        else return false;
+        if (CollateJSON(buf1, buf2, kCollateJSON_Unicode) >= 0)
+            return 0;
+        else {
+            return 1;
+        }
     } else {
-        if (memcmp(buf1->buf, buf2->buf, length) < 0) return true;
-        else return false;
+        if (memcmp(buf1->buf, buf2->buf, length) < 0) return 1;
+        else return 0;
     }
 }
 

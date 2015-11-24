@@ -8,6 +8,7 @@ import (
 	"net/http"
 	_ "net/http/pprof"
 	"os"
+	"runtime"
 	"strconv"
 
 	"github.com/abhi-bit/gouch"
@@ -87,6 +88,8 @@ func runQuery(w http.ResponseWriter, r *http.Request) {
 }
 
 func main() {
+
+	runtime.GOMAXPROCS(runtime.NumCPU())
 
 	indexFileInfo = &gouch.Gouch{}
 	indexFileInfo.SetStatus(false)

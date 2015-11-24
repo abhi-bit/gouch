@@ -14,7 +14,7 @@ char *randstring(size_t length)
         randomString = malloc(sizeof(char) * (length +1));
 
         if (randomString) {
-            for (n = 0;n < length;n++) {
+            for (int n = 0; n < length; n++) {
                 int key = rand() % (int)(sizeof(charset) -1);
                 randomString[n] = charset[key];
             }
