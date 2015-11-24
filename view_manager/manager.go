@@ -109,6 +109,7 @@ func fetch(url string) (string, error) {
 	}
 	return string(body), nil
 }
+
 func main() {
 
 	log.Printf("listening on %s:%d\n", address, port)

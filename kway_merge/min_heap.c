@@ -25,6 +25,23 @@ void swap(node *n1, node *n2)
     *n2 = temp;
 }
 
+int collate_JSON(char *b1, char *b2, int s1, int s2)
+{
+    sized_buf *buf1 = malloc(sizeof(sized_buf));
+    sized_buf *buf2 = malloc(sizeof(sized_buf));
+
+    buf1->buf = b1;
+    buf1->size = (size_t)s1;
+
+    buf2->buf = b2;
+    buf2->size = (size_t)s2;
+
+    return CollateJSON((const sized_buf*)buf1,
+                       (const sized_buf*)buf2,
+                       kCollateJSON_Unicode);
+}
+
+
 static int compare(const sized_buf *buf1, const sized_buf *buf2, CollationMode mode)
 {
     size_t length = (buf1->size < buf2->size) ? buf1->size : buf2->size;

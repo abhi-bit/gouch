@@ -1,14 +1,15 @@
 package gouch
 
 import (
-	"bytes"
+//	"bytes"
 )
 
 type btreeKeyComparator func(a, b []byte) int
 
 //IDComparator Comparing IDs
 func IDComparator(a, b []byte) int {
-	return bytes.Compare(a, b)
+	//return bytes.Compare(a, b)
+	return collateJSON(a, b)
 }
 
 //SeqComparator by comparing Sequence numbers
