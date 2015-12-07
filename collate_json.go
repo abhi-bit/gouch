@@ -2,8 +2,8 @@ package gouch
 
 /*
 #include "kway_merge/collate_json.h"
-#include "kway_merge/min_heap.h"
 #include <stdlib.h>
+#cgo LDFLAGS: -L. -lcollate_json
 */
 import "C"
 
