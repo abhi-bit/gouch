@@ -2,10 +2,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include "collate_json.h"
-#include "min_heap.h"
-
-#define count 4
-#define arr_count 4
+#include "kway_merge.h"
 
 char *randstring(size_t length)
 {
@@ -28,7 +25,7 @@ char *randstring(size_t length)
     return randomString;
 }
 
-static int compare(const void *p1, const void *p2)
+static int qsortCompare(const void *p1, const void *p2)
 {
     const sized_buf *buf1 = (const sized_buf*) p1;
     const sized_buf *buf2 = (const sized_buf*) p2;
@@ -36,41 +33,11 @@ static int compare(const void *p1, const void *p2)
     return CollateJSON(buf1, buf2, kCollateJSON_Unicode);
 }
 
-sized_buf *mergeKArrays(minHeap *hp, node buf_arr[arr_count][count])
-{
-    sized_buf *output = (sized_buf *)malloc(sizeof(sized_buf) * arr_count * count);
-    int i, j;
-
-    for (i = 0; i < arr_count; i++) {
-        node *n = (node *)malloc(sizeof(node));
-        n->data = buf_arr[i][0].data;
-        n->i = i;
-        // j represents next element to be picked from the ith array
-        n->j = 1;
-        insertNode(hp, n);
-    }
-
-    for (j = 0; j < arr_count * count; j++) {
-        node *root = getMinNode(hp);
-        output[j] = root->data;
-
-        if (root->j < count) {
-            root->data = buf_arr[root->i][root->j].data;
-            root->j += 1;
-        } else {
-            sized_buf data;
-            data.buf = "\"z\"";
-            data.size = 2;
-            root->data = data;
-        }
-
-        replaceMin(hp, root);
-    }
-    return output;
-}
-
 int main()
 {
+
+    int count = 4, arr_count = 2;
+
     node arr[arr_count][count];
     minHeap *hp = initMinHeap();
     int i, j;
@@ -90,8 +57,8 @@ int main()
         }
     }
 
-    qsort(arr[0], count, sizeof(node), compare);
-    qsort(arr[1], count, sizeof(node), compare);
+    qsort(arr[0], count, sizeof(node), qsortCompare);
+    qsort(arr[1], count, sizeof(node), qsortCompare);
 
     printf("\nQ-sorted arrays\n");
     for (i = 0; i < arr_count; i++) {
@@ -100,7 +67,7 @@ int main()
         }
         printf("\n");
     }
-    sized_buf *output = mergeKArrays(hp, arr);
+    sized_buf *output = mergeKArrays(hp, (node *)arr, arr_count, count);
 
     printf("\nK-Way merge dump>\n");
     for (i = 0; i < arr_count * count; i++) {
