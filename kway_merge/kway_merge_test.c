@@ -1,78 +1,69 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/time.h>
+#include <unistd.h>
 #include "collate_json.h"
 #include "kway_merge.h"
 
-char *randstring(size_t length)
+int timeval_subtract(struct timeval *result, struct timeval *t2, struct timeval *t1)
 {
-    //static char charset[] = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789,.-#'?!";
-    static char charset[] = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
-    char *randomString = NULL;
-    int n;
+    long int diff = (t2->tv_usec + 1000000 * t2->tv_sec) - (t1->tv_usec + 1000000 * t1->tv_sec);
+    result->tv_sec = diff / 1000000;
+    result->tv_usec = diff % 1000000;
 
-    if (length) {
-        randomString = malloc(sizeof(char) * (length));
-        randomString[0] = '"';
-        if (randomString) {
-            for (n = 1; n < length - 1; n++) {
-                int key = rand() % (int)(sizeof(charset) -1);
-                randomString[n] = charset[key];
-            }
-            randomString[length - 1] = '"';
-        }
-    }
-    return randomString;
-}
-
-static int qsortCompare(const void *p1, const void *p2)
-{
-    const sized_buf *buf1 = (const sized_buf*) p1;
-    const sized_buf *buf2 = (const sized_buf*) p2;
-
-    return CollateJSON(buf1, buf2, kCollateJSON_Unicode);
+    return (diff<0);
 }
 
 int main()
 {
 
-    int count = 4, arr_count = 2;
+    int count = 100, arr_count = 2;
 
     node arr[arr_count][count];
     minHeap *hp = initMinHeap();
     int i, j;
 
-    printf("Merging %d arrays each of size %d\n\n", arr_count, count);
+    printf("Merging %d arrays each of size %d\n", arr_count, count);
 
     for (i = 0; i < arr_count; i++) {
+        char file_name[20];
+        //Text files containing one element per line
+        sprintf(file_name, "%d.txt", i);
+        FILE *file = fopen(file_name, "r");
+        char line[22];
         for (j = 0; j < count; j++) {
-            node *n = (node *) malloc(sizeof(node));
-            // randstring() is bad choice, there isn't any ordering in
-            // consecutive generations
-            n->data.buf = randstring(20);
-            n->data.size = 20;
+            fgets(line, sizeof(line), file);
+            node *n;
+            MALLOC(n, sizeof(node));
+            MALLOC(n->data, sizeof(sized_buf));
+            MALLOC(n->data->buf, 22 * sizeof(char));
+            sprintf(n->data->buf, "%s", line);
+            n->data->size = 20;
             arr[i][j] = *n;
-            printf("INSERT> %d array: ", i);
-            printf("%.*s\n", (int) n->data.size, n->data.buf);
         }
     }
 
-    qsort(arr[0], count, sizeof(node), qsortCompare);
-    qsort(arr[1], count, sizeof(node), qsortCompare);
+    struct timeval tvBegin, tvEnd, tvDiff;
+    gettimeofday(&tvBegin, NULL);
+    sized_buf *output = mergeKArrays(hp, (node *)arr, arr_count, count);
+    gettimeofday(&tvEnd, NULL);
+    timeval_subtract(&tvDiff, &tvEnd, &tvBegin);
+    printf("mergeKArrays took %ld.%06ds\n", tvDiff.tv_sec, tvDiff.tv_usec);
 
-    printf("\nQ-sorted arrays\n");
     for (i = 0; i < arr_count; i++) {
         for (j = 0; j < count; j++) {
-            printf("%.*s\n", (int) arr[i][j].data.size, arr[i][j].data.buf);
+            free((node *)arr[i][j].data->buf);
+            free((node *)arr[i][j].data);
+            //TODO: Freeup memory allocated to pointers
+            //assigned to each array elements
         }
-        printf("\n");
     }
-    sized_buf *output = mergeKArrays(hp, (node *)arr, arr_count, count);
 
-    printf("\nK-Way merge dump>\n");
+    /*printf("\nK-Way merge dump>\n");
     for (i = 0; i < arr_count * count; i++) {
         printf("%.*s\n", (int) output[i].size, output[i].buf);
-    }
+    }*/
 
     free(hp);
     return 0;

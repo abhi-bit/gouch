@@ -3,7 +3,8 @@
 
 sized_buf *mergeKArrays(minHeap *hp, node *buf_arr, int arr_count, int count)
 {
-    sized_buf *output = (sized_buf *)malloc(sizeof(sized_buf) * arr_count * count);
+    sized_buf *output;
+    MALLOC(output, sizeof(sized_buf) * arr_count * count);
     int i, j, k;
     node *z;
 
@@ -19,7 +20,7 @@ sized_buf *mergeKArrays(minHeap *hp, node *buf_arr, int arr_count, int count)
 
     for (k = 0; k < arr_count * count; k++) {
         node *root = getMinNode(hp);
-        output[k] = root->data;
+        output[k] = *(root->data);
 
         if (root->j < count) {
             i = root->i;
@@ -31,7 +32,7 @@ sized_buf *mergeKArrays(minHeap *hp, node *buf_arr, int arr_count, int count)
             sized_buf data;
             data.buf = "\"z\"";
             data.size = 2;
-            root->data = data;
+            root->data = &data;
         }
 
         replaceMin(hp, root);

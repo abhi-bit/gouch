@@ -11,9 +11,15 @@ typedef enum CollationMode {
     Collate_Raw
 } CollationMode;
 
+int getSize(minHeap *hp)
+{
+    return hp->size;
+}
+
 minHeap* initMinHeap()
 {
-    minHeap *hp = (minHeap *)malloc(sizeof(minHeap));
+    minHeap *hp;
+    MALLOC(hp, sizeof(minHeap));
     hp->size = 0;
     return hp;
 }
@@ -69,11 +75,13 @@ void printArray(sized_buf *arr[], int size)
 void heapify(minHeap *hp, int i)
 {
     int smallest = (LCHILD(i) < hp->size &&
-                    compare(&hp->elem[LCHILD(i)].data, &hp->elem[i].data, Collate_Unicode))
+                    compare(hp->elem[LCHILD(i)].data, hp->elem[i].data,
+                    Collate_Unicode))
                     ? LCHILD(i) : i;
 
     if (RCHILD(i) < hp->size &&
-            compare(&hp->elem[RCHILD(i)].data, &hp->elem[smallest].data, Collate_Unicode)) {
+            compare(hp->elem[RCHILD(i)].data, hp->elem[smallest].data,
+            Collate_Unicode)) {
         smallest = RCHILD(i);
     }
 
@@ -94,7 +102,7 @@ void buildMinHeap(minHeap *hp, sized_buf *arr[], int size)
             hp->elem = malloc(sizeof(node));
         }
         node nd;
-        nd.data = *arr[i];
+        nd.data = arr[i];
         hp->elem[(hp->size)++] = nd;
     }
 
@@ -116,7 +124,7 @@ void insertNode(minHeap *hp, node *data) {
     nd.j = data->j;
 
     int i = (hp->size)++;
-    while (i && compare(&nd.data, &hp->elem[PARENT(i)].data, Collate_Unicode)) {
+    while (i && compare(nd.data, hp->elem[PARENT(i)].data, Collate_Unicode)) {
         hp->elem[i] = hp->elem[PARENT(i)];
         i = PARENT(i);
     }
@@ -182,14 +190,14 @@ void inorderTraversal(minHeap *hp, int i) {
     if (LCHILD(i) < hp->size) {
         inorderTraversal(hp, LCHILD(i));
     }
-    printf("%.*s\n", (int) hp->elem[i].data.size, hp->elem[i].data.buf);
+    printf("%.*s\n", (int) hp->elem[i].data->size, hp->elem[i].data->buf);
     if (RCHILD(i) < hp->size) {
         inorderTraversal(hp, RCHILD(i));
     }
 }
 
 void preorderTraversal(minHeap *hp, int i) {
-    printf("%.*s\n", (int) hp->elem[i].data.size, hp->elem[i].data.buf);
+    printf("%.*s\n", (int) hp->elem[i].data->size, hp->elem[i].data->buf);
     if (LCHILD(i) < hp->size) {
         preorderTraversal(hp, LCHILD(i));
     }
@@ -205,12 +213,12 @@ void postorderTraversal(minHeap *hp, int i) {
     if (RCHILD(i) < hp->size) {
         postorderTraversal(hp, RCHILD(i));
     }
-    printf("%.*s\n", (int) hp->elem[i].data.size, hp->elem[i].data.buf);
+    printf("%.*s\n", (int) hp->elem[i].data->size, hp->elem[i].data->buf);
 }
 
 void levelorderTraversal(minHeap *hp) {
     int i;
     for (i = 0; i < hp->size; i++) {
-        printf("%.*s\n", (int) hp->elem[i].data.size, hp->elem[i].data.buf);
+        printf("%.*s\n", (int) hp->elem[i].data->size, hp->elem[i].data->buf);
     }
 }
