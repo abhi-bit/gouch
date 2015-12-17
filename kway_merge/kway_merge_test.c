@@ -18,11 +18,12 @@ int timeval_subtract(struct timeval *result, struct timeval *t2, struct timeval 
 int main()
 {
 
-    int count = 100, arr_count = 2;
+    int count = 100000, arr_count = 2;
 
     node arr[arr_count][count];
+    node *arrptr[arr_count * count];
     minHeap *hp = initMinHeap();
-    int i, j;
+    int i, j, k = 0;
 
     printf("Merging %d arrays each of size %d\n", arr_count, count);
 
@@ -41,6 +42,7 @@ int main()
             sprintf(n->data->buf, "%s", line);
             n->data->size = 20;
             arr[i][j] = *n;
+            arrptr[k++] = n;
         }
     }
 
@@ -53,13 +55,12 @@ int main()
 
     for (i = 0; i < arr_count; i++) {
         for (j = 0; j < count; j++) {
-            free((node *)arr[i][j].data->buf);
-            free((node *)arr[i][j].data);
-            //TODO: Freeup memory allocated to pointers
-            //assigned to each array elements
+            free(arr[i][j].data->buf);
+            free(arr[i][j].data);
         }
     }
 
+    for (k = 0; k < arr_count * count; k++)   free(arrptr[k]);
     /*printf("\nK-Way merge dump>\n");
     for (i = 0; i < arr_count * count; i++) {
         printf("%.*s\n", (int) output[i].size, output[i].buf);
