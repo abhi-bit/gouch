@@ -111,7 +111,7 @@ void buildMinHeap(minHeap *hp, sized_buf *arr[], int size)
     }
 }
 
-void insertNode(minHeap *hp, node *data) {
+void insertNode(minHeap *hp, node *n) {
     if (hp->size) {
         hp->elem = realloc(hp->elem, (hp->size + 1) * sizeof(node));
     } else {
@@ -119,9 +119,9 @@ void insertNode(minHeap *hp, node *data) {
     }
 
     node nd;
-    nd.data = data->data;
-    nd.i = data->i;
-    nd.j = data->j;
+    nd.data = n->data;
+    nd.i = n->i;
+    nd.j = n->j;
 
     int i = (hp->size)++;
     while (i && compare(nd.data, hp->elem[PARENT(i)].data, Collate_Unicode)) {

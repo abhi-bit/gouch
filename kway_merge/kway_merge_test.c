@@ -18,11 +18,11 @@ int timeval_subtract(struct timeval *result, struct timeval *t2, struct timeval 
 int main()
 {
 
-    int count = 100000, arr_count = 2;
+    int count = 1000000, arr_count = 2;
 
-    node arr[arr_count][count];
-    node *arrptr[arr_count * count];
     minHeap *hp = initMinHeap();
+    node *arr;
+    MALLOC(arr, arr_count * count * sizeof(node));
     int i, j, k = 0;
 
     printf("Merging %d arrays each of size %d\n", arr_count, count);
@@ -36,13 +36,11 @@ int main()
         for (j = 0; j < count; j++) {
             fgets(line, sizeof(line), file);
             node *n;
-            MALLOC(n, sizeof(node));
             MALLOC(n->data, sizeof(sized_buf));
             MALLOC(n->data->buf, 22 * sizeof(char));
             sprintf(n->data->buf, "%s", line);
             n->data->size = 20;
-            arr[i][j] = *n;
-            arrptr[k++] = n;
+            arr[i * count + j] = *n;
         }
     }
 
@@ -55,17 +53,19 @@ int main()
 
     for (i = 0; i < arr_count; i++) {
         for (j = 0; j < count; j++) {
-            free(arr[i][j].data->buf);
-            free(arr[i][j].data);
+            free(arr[i * count + j].data->buf);
+            free(arr[i * count + j].data);
         }
     }
 
-    for (k = 0; k < arr_count * count; k++)   free(arrptr[k]);
     /*printf("\nK-Way merge dump>\n");
+    node *sn = arr;
     for (i = 0; i < arr_count * count; i++) {
-        printf("%.*s\n", (int) output[i].size, output[i].buf);
+        printf("%.*s\n", (int) sn->data->size, sn->data->buf);
+        sn++;
     }*/
 
+    free(arr);
     free(output);
     free(hp);
     return 0;
