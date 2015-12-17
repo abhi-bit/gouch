@@ -66,6 +66,7 @@ int main()
         printf("%.*s\n", (int) output[i].size, output[i].buf);
     }*/
 
+    free(output);
     free(hp);
     return 0;
 }
