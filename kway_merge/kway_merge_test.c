@@ -18,7 +18,7 @@ int timeval_subtract(struct timeval *result, struct timeval *t2, struct timeval 
 int main()
 {
 
-    int count = 1000000, arr_count = 2;
+    int count = 1000000, arr_count = 4;
 
     minHeap *hp = initMinHeap();
     node *arr;
@@ -30,17 +30,19 @@ int main()
     for (i = 0; i < arr_count; i++) {
         char file_name[20];
         //Text files containing one element per line
-        sprintf(file_name, "%d.txt", i);
+        sprintf(file_name, "input_files/%d.txt", i);
         FILE *file = fopen(file_name, "r");
         char line[22];
         for (j = 0; j < count; j++) {
             fgets(line, sizeof(line), file);
             node *n;
+	    MALLOC(n, sizeof(node));
             MALLOC(n->data, sizeof(sized_buf));
             MALLOC(n->data->buf, 22 * sizeof(char));
             sprintf(n->data->buf, "%s", line);
             n->data->size = 20;
             arr[i * count + j] = *n;
+	    free(n);
         }
     }
 
