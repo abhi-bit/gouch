@@ -66,11 +66,25 @@ func OpenEx(filename string, options int, ops Ops) (*Gouch, error) {
 		fmt.Errorf("Empty file: %v\n", filename)
 		return nil, err
 	}
-	err = gouch.findLastHeader()
+	_, err = gouch.findLastHeader()
 	if err != nil {
 		return nil, err
 	}
 	return &gouch, nil
+}
+
+func (g *Gouch) GetHeaderCount() int64 {
+	var headerCount int64
+	var headerPos int64
+	err := fmt.Errorf("headercount")
+	headerPos, err = g.findLastHeader()
+	for err == nil && headerPos > 4096 {
+		headerCount = headerCount + 1
+		g.pos = headerPos - 1
+		fmt.Printf("header pos: %d\n", g.pos)
+		headerPos, err = g.findLastHeader()
+	}
+	return headerCount
 }
 
 //Close clears up the open file handle
