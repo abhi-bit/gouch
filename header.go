@@ -33,7 +33,7 @@ type IndexHeader struct {
 	partVersions       partVersionList
 }
 
-func (g *Gouch) findLastHeader() error {
+func (g *Gouch) findLastHeader() (int64, error) {
 	pos := g.pos
 	var h *IndexHeader
 	err := fmt.Errorf("start")
@@ -41,7 +41,7 @@ func (g *Gouch) findLastHeader() error {
 	for h == nil && err != nil {
 		headerPos, err = g.seekLastHeaderBlockFrom(pos)
 		if err != nil {
-			return err
+			return headerPos, err
 		}
 		h, err = g.readHeaderAt(headerPos)
 		if err != nil {
@@ -49,7 +49,7 @@ func (g *Gouch) findLastHeader() error {
 		}
 	}
 	g.header = h
-	return nil
+	return headerPos, nil
 }
 
 func (g *Gouch) readHeaderAt(pos int64) (*IndexHeader, error) {
